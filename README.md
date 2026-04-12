@@ -26,5 +26,5 @@ cd Canny-Edge-Detection-on-RISC-V-Project
 - [@Youssif991](https://github.com/Youssif991)
 - [@youssefteam18-boop](https://github.com/youssefteam18-boop)
 - [@naderhany12](https://github.com/naderhany12)
-- [@minawaeltanagho](https://github.com/naderhany12)
+- [@minawaeltanagho](https://github.com/minawaeltanagho)
 
