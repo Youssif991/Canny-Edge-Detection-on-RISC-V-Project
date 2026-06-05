@@ -1,0 +1,31 @@
+# ── Build outputs ─────────────────────────────────────────────────────────────
+build/
+*.o
+*.a
+*.elf
+
+# ── Binary executables (no extension on Linux) ────────────────────────────────
+host_tests/host_tests
+tests/rvv_add_test
+
+# ── Raw test images (the doc says don't commit these) ────────────────────────
+*.raw
+*.bin
+*.gray
+
+# ── Compiler reports and logs ─────────────────────────────────────────────────
+*.opt-info
+*.s
+
+# ── GoogleTest build artifacts ────────────────────────────────────────────────
+third_party/googletest/build/
+
+# ── Timing and profiling output files ─────────────────────────────────────────
+*.csv
+*.log
+
+# ── macOS and editor junk ─────────────────────────────────────────────────────
+.DS_Store
+.vscode/
+.idea/
+*.swp
