@@ -63,34 +63,63 @@ step1_prerequisites() {
 # =============================================================================
 # STEP 2 — Build RISC-V GCC toolchain with RVV support
 # =============================================================================
+# =============================================================================
+# STEP 2 — Build RISC-V GCC toolchain with RVV support
+# =============================================================================
 step2_toolchain() {
     info "Step 2/7 — Building RISC-V GCC toolchain (this takes 30-45 min)..."
 
     if [ -f "$RISCV_INSTALL/bin/riscv64-unknown-linux-gnu-gcc" ]; then
-        warn "Toolchain already exists at $RISCV_INSTALL — skipping build."
+        warn "Toolchain already built at $RISCV_INSTALL — skipping entirely."
+        export PATH="$RISCV_INSTALL/bin:$PATH"
         return
     fi
 
     mkdir -p "$RISCV_INSTALL"
 
     TOOLCHAIN_SRC="$HOME/riscv-gnu-toolchain"
-    if [ ! -d "$TOOLCHAIN_SRC" ]; then
+
+    # ── Clone main repo only if not already cloned ───────────────────────────
+    if [ ! -d "$TOOLCHAIN_SRC/.git" ]; then
         git clone https://github.com/riscv-collab/riscv-gnu-toolchain.git "$TOOLCHAIN_SRC"
     else
-        info "Toolchain source already cloned — skipping clone."
+        info "Toolchain repo already cloned — skipping."
     fi
 
     cd "$TOOLCHAIN_SRC"
 
-    ./configure \
-        --prefix="$RISCV_INSTALL" \
-        --with-arch=rv64gcv \
-        --with-abi=lp64d \
-        --with-multilib-generator="rv64gcv-lp64d--"
+    # ── Increase buffer to avoid mid-transfer drops ───────────────────────────
+    git config --global http.postBuffer 524288000
 
+    # ── Init submodules if not already done ───────────────────────────────────
+    for submodule in glibc binutils gdb gcc newlib; do
+        if [ ! -f "$TOOLCHAIN_SRC/$submodule/.git" ] && \
+           [ ! -d "$TOOLCHAIN_SRC/$submodule/.git" ]; then
+            info "Fetching missing submodule: $submodule"
+            git submodule update --init --depth 1 --progress -- "$submodule" || {
+                warn "$submodule failed with depth 1, retrying without depth limit..."
+                git submodule update --init --progress -- "$submodule"
+            }
+        else
+            info "Submodule already present: $submodule — skipping."
+        fi
+    done
+
+    # ── Configure only if not already configured ──────────────────────────────
+    if [ ! -f "$TOOLCHAIN_SRC/Makefile" ] || \
+       ! grep -q "rv64gcv" "$TOOLCHAIN_SRC/Makefile" 2>/dev/null; then
+        ./configure \
+            --prefix="$RISCV_INSTALL" \
+            --with-arch=rv64gcv \
+            --with-abi=lp64d \
+            --with-multilib-generator="rv64gcv-lp64d--"
+    else
+        info "Already configured — skipping configure step."
+    fi
+
+    # ── Build ─────────────────────────────────────────────────────────────────
     make linux -j"$JOBS"
 
-    # Add to PATH for this session and persistently
     export PATH="$RISCV_INSTALL/bin:$PATH"
     _add_to_path "$RISCV_INSTALL/bin"
 
