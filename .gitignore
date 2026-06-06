@@ -29,11 +29,9 @@ canny_tests
 # -----------------------------------------------------------------------------
 # Raw test images and visualizations
 # -----------------------------------------------------------------------------
-*.raw
 *.bin
 *.gray
 *.png
-assets/*.raw
 assets/*.bin
 assets/*.gray
 assets/*.png
