@@ -12,12 +12,13 @@ step5_python() {
 
     if [ -d "$VENV_DIR" ]; then
         warn "Python venv already exists — skipping."
-        return
+    else
+        python3 -m venv "$VENV_DIR"
+        ./"$VENV_DIR"/bin/python -m pip install --upgrade pip --quiet
+        ./"$VENV_DIR"/bin/python -m pip install $PYTHON_PACKAGES --quiet
+        success "Python venv ready. Packages installed: $PYTHON_PACKAGES"
     fi
 
-    python3 -m venv "$VENV_DIR"
-    ./"$VENV_DIR"/bin/python -m pip install --upgrade pip --quiet
-    ./"$VENV_DIR"/bin/python -m pip install $PYTHON_PACKAGES --quiet
-
-    success "Python venv ready. Packages installed: $PYTHON_PACKAGES"
+    # Install numpy globally so tools run without activating the venv
+    pip3 install numpy matplotlib --break-system-packages --quiet
 }
