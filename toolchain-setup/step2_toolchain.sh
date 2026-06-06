@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# =============================================================================
 # step2_toolchain.sh — Build the RISC-V GCC toolchain with RVV support.
-# Resumable: skips submodules already cloned, skips configure if already
-# done, and skips the entire step if the compiler binary already exists.
-# =============================================================================
+
 
 step2_toolchain() {
     info "Step 2/3 — Building RISC-V GCC toolchain (this takes 30-45 min)..."
@@ -32,14 +29,12 @@ step2_toolchain() {
     git config --global http.postBuffer 524288000
 
     # ── Fetch each submodule individually, skipping already-present ones ──────
+    # Full clones only — shallow clones omit files needed by the build system
     for submodule in glibc binutils gdb gcc newlib; do
         if [ ! -f "$TOOLCHAIN_SRC/$submodule/.git" ] && \
            [ ! -d "$TOOLCHAIN_SRC/$submodule/.git" ]; then
-            info "Fetching missing submodule: $submodule"
-            git submodule update --init --depth 1 --progress -- "$submodule" || {
-                warn "$submodule failed with --depth 1, retrying without depth limit..."
-                git submodule update --init --progress -- "$submodule"
-            }
+            info "Fetching missing submodule: $submodule (full clone)..."
+            git submodule update --init --progress -- "$submodule"
         else
             info "Submodule already present: $submodule — skipping."
         fi

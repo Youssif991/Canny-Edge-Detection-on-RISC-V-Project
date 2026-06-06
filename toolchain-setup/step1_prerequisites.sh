@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# =============================================================================
+
 # step1_prerequisites.sh — Install host packages required to build the
 # RISC-V toolchain and QEMU from source.
-# =============================================================================
 
 step1_prerequisites() {
     info "Step 1/3 — Installing host prerequisites..."

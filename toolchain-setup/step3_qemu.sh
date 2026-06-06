@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# =============================================================================
 # step3_qemu.sh — Build QEMU from source targeting riscv64 user-mode.
-# Skips the build if qemu-riscv64 already exists at the install prefix.
-# =============================================================================
+
 
 step3_qemu() {
     info "Step 3/3 — Building QEMU $QEMU_VERSION (riscv64 user-mode)..."
