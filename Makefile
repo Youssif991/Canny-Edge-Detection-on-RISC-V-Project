@@ -43,6 +43,14 @@ test: tests/host_tests.cpp
 	    -o build/host/debug/unit_tests
 	./build/host/debug/unit_tests
 
+# Build and run the image I/O host test
+.PHONY: image-io-test
+image-io-test: tests/image_io_tests.cpp
+	@mkdir -p build/host/debug
+	$(HOST_CXX) -DHOST_MODE tests/image_io_tests.cpp $(LIB_SRCS) $(HOST_FLAGS) \
+	    -o build/host/debug/image_io_tests
+	./build/host/debug/image_io_tests
+
 # Critical first test — verifies full toolchain and QEMU chain
 rvv_test: tests/rvv_sanity.cpp
 	@mkdir -p build/target/debug
