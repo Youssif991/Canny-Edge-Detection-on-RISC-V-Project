@@ -1,165 +1,156 @@
 # Canny-Edge-Detection-on-RISC-V-Project
 
-## Project Overview
-This project implements a Canny edge detection pipeline written in C++. It is targeted for RISC-V (`rv64gcv`) and runs on QEMU in user-mode emulation. 
+[![Doxygen](https://img.shields.io/badge/docs-Doxygen-blue)](docs/html/index.html)
 
-The goal of this project is to measure performance from a scalar C++ baseline and optimize the hot kernels using RISC-V Vector (RVV) intrinsics.
+## Project Overview
+This repository implements a modular Canny edge detection pipeline in C++ with an emphasis on RISC-V Vector (RVV) acceleration. The primary target is `rv64gcv` user-mode execution under `qemu-riscv64`, with native host validation via GoogleTest.
+
+The workflow focuses on:
+* A scalar baseline for algorithm correctness.
+* RVV-enabled kernel implementations that are vector-length-agnostic.
+* Cross-compilation of target binaries for RISC-V and host-side functional verification.
 
 ## Prerequisites
-To build and run this project from scratch, you will need the following environment setup:
-* An appropriate operating system environment: Linux natively, WSL2 with Ubuntu 24.04 (for Windows), or Docker Desktop (for macOS).
-* The RISC-V GNU toolchain built from source (with the `--with-arch=rv64gcv` flag to enable Vector extension support).
-* QEMU built from source targeting `riscv64-linux-user`.
-* GoogleTest for host-side unit testing.
+Required components:
+* Linux or compatible POSIX environment.
+* RISC-V GNU toolchain: `riscv64-unknown-elf-g++` built with `--with-arch=rv64gcv --with-abi=lp64d`.
+* QEMU user-mode emulator: `qemu-riscv64`.
+* GoogleTest installed and accessible via `$(HOME)/googletest-installed`.
+* Doxygen 1.9.8 for documentation generation.
 
-## Getting Started
+Recommended packages for Ubuntu/Debian:
+```bash
+sudo apt install build-essential bison flex libssl-dev libz-dev python3 python3-venv cmake doxygen graphviz
+```
 
-### 1. Clone the Repository
+## Repository setup
+
+### Clone repository
 ```bash
 git clone https://github.com/Youssif991/Canny-Edge-Detection-on-RISC-V-Project.git
 cd Canny-Edge-Detection-on-RISC-V-Project
 ```
-### 2. Environment Setup (Toolchain & QEMU Build)
-To compile and emulate RISC-V Vector (RVV) instructions, the project includes an automated setup script. This script installs required system dependencies, builds a custom RISC-V GCC bare-metal toolchain with vector extensions, builds QEMU user-mode with profiling plugins, builds GoogleTest for verification, and configures a Python virtual environment.
 
-Run the full installation (this can take 30-90 minutes depending on your hardware):
+### Automated environment setup
+The `toolchain-setup` scripts automate toolchain and emulator preparation:
 ```bash
-# Make setup scripts executable
 chmod +x toolchain-setup/*.sh
-
-# Run the master setup script
 ./toolchain-setup/main.sh
 ```
 
-> [!NOTE]
-> The setup script is modular. You can inspect or run individual steps under the [toolchain-setup](file:///e:/Projects/Embedded/Dr.Omar%20Nasr/Project/Canny-Edge-Detection-on-RISC-V-Project/toolchain-setup) directory if needed.
+This performs:
+* `step1_prerequisites.sh`: installs host build dependencies.
+* `step2_toolchain.sh`: builds a bare-metal RISC-V toolchain under `~/riscv-toolchain`.
+* `step3_qemu.sh`: builds QEMU with user-mode support and plugin enablement.
+* `step4_project.sh`: builds and installs GoogleTest under `~/googletest-installed`.
+* `step5_python.sh`: configures `.venv` and installs Python analysis dependencies.
 
-After setup completes, reload your shell profile to apply the path changes:
+Reload your shell after setup:
 ```bash
 source ~/.bashrc
 ```
 
-The script automates the following steps:
-* **Step 1 (`step1_prerequisites.sh`)**: Installs host system packages needed for compiling GCC, QEMU, CMake, and Doxygen. Supports Ubuntu/Debian/Pop!_OS and Arch/Manjaro.
-* **Step 2 (`step2_toolchain.sh`)**: Clones and builds a bare-metal `riscv64-unknown-elf-g++` toolchain with RVV enabled (`--with-arch=rv64gcv`, `--with-abi=lp64d`) under `~/riscv-toolchain`.
-* **Step 3 (`step3_qemu.sh`)**: Clones and builds QEMU 9.x+ with user-mode simulation and profiling plugins (`--enable-plugins`) under `~/qemu-install`.
-* **Step 4 (`step4_project.sh`)**: Clones GoogleTest and compiles/installs it under `~/googletest-installed`.
-* **Step 5 (`step5_python.sh`)**: Sets up a Python virtual environment (`.venv`) inside the project and installs `numpy`, `matplotlib`, and `PyQt5` for analysis and visualization.
+## Build and test workflow
 
----
-
-### 3. Initialize the Project Structure
-Initialize the directory structure and generate the scaffold source/header files:
+### Native host verification
+Run the host-side GoogleTest suite:
 ```bash
-chmod +x init_project.sh
-./init_project.sh
+make test
+```
+This compiles `tests/host_tests.cpp` and the pipeline implementation with the host compiler, then executes the resulting binary.
+
+### RISC-V target build
+Compile the full pipeline for RISC-V execution:
+```bash
+make canny_rv
+```
+Output:
+* `build/target/release/canny_rv.elf`
+
+### Run the RISC-V binary under QEMU
+```bash
+make run
+```
+Invokes QEMU with `-cpu rv64,v=true,vlen=256,elen=64`.
+
+### Vector-length validation
+```bash
+make run_vlen
+```
+Executes the RISC-V binary across VLEN values `128`, `256`, and `512` to confirm RVV correctness independent of hardware vector length.
+
+### Image I/O unit test
+```bash
+make image-io-test
+```
+Builds and runs the host-side image I/O regression test binary.
+
+### Clean artifacts
+```bash
+make clean
 ```
 
----
-
-## Directory Structure
+## Directory structure
 
 ```text
 .
-├── assets/                 # Test images (raw grayscale format)
-├── build/                  # Build artifacts (ignored by Git)
-│   ├── host/debug/         # Native host binaries (unit tests)
-│   ├── target/debug/       # Target debug RISC-V ELF binaries
-│   └── target/release/     # Cross-compiled production RISC-V ELF binaries
-├── docs/                   # Documentation output
-│   ├── html/               # HTML documentation (open index.html to view)
-│   └── latex/              # LaTeX documentation
-├── include/                # Header files for the Canny pipeline stages
-│   ├── direction.hpp       # Gradient direction quantization interface
-│   ├── gaussian.hpp        # 5x5 Gaussian filter interface
-│   ├── image_io.hpp        # Grayscale Raw image load/save utility interface
-│   ├── magnitude.hpp       # Gradient magnitude calculation interface
-│   └── sobel.hpp           # Sobel operator (Gx, Gy) interface
-├── src/                    # C++ source implementation files
-│   ├── direction.cpp       # Quantization to 0, 45, 90, 135 degrees
-│   ├── gaussian.cpp        # Scalar baseline for 5x5 Gaussian blur
-│   ├── image_io.cpp        # Image load/save implementation
-│   ├── magnitude.cpp       # L1 and L2 norm implementations
-│   ├── main.cpp            # Main entry point and orchestration
-│   └── sobel.cpp           # Scalar baseline for Sobel Gx/Gy
-├── tests/                  # Test suites
-│   └── host_tests.cpp      # GoogleTest suite for host-side stage testing
-├── toolchain-setup/        # Modular bash files for RISC-V/QEMU setup
-├── tools/                  # Script helpers (image convertors, visualizers, etc.)
-├── Doxyfile                # Doxygen configuration file
-├── Makefile                # GNU Makefile for building and running the project
-└── README.md               # Project overview and instructions
+├── assets/                 # Raw grayscale test images stored as `width * height` byte streams
+├── build/                  # Generated build artifacts
+│   ├── host/debug/         # Host-side test binaries
+│   ├── target/debug/       # RISC-V debug binaries
+│   └── target/release/     # RISC-V release binaries
+├── docs/                   # Doxygen output directory
+│   ├── html/               # Generated HTML documentation
+│   └── latex/              # Generated LaTeX output
+├── include/                # Public C++ headers for each pipeline stage
+├── src/                    # Implementation source files
+├── tests/                  # GoogleTest suites and stage tests
+├── toolchain-setup/        # Setup scripts for toolchain and QEMU
+├── tools/                  # Python helpers for test image generation and visualization
+├── Doxyfile                # Doxygen configuration
+├── Makefile                # Build and test automation
+└── README.md               # Project documentation
 ```
 
----
+> Raw `.raw` test assets are tracked in Git. Generated `.png` visualizations are ignored by `.gitignore`.
 
-## Canny Edge Detection Pipeline
+## Canny pipeline modules
 
-The pipeline is split into modular stages corresponding to the steps of the Canny algorithm:
-
-| Stage | Files | Description |
+| Stage | Files | Technical details |
 | :--- | :--- | :--- |
-| **Image I/O** | [image_io.hpp](file:///e:/Projects/Embedded/Dr.Omar%20Nasr/Project/Canny-Edge-Detection-on-RISC-V-Project/include/image_io.hpp) / [image_io.cpp](file:///e:/Projects/Embedded/Dr.Omar%20Nasr/Project/Canny-Edge-Detection-on-RISC-V-Project/src/image_io.cpp) | Loads and saves raw grayscale images consisting of raw `width * height` byte data. |
-| **Gaussian Blur** | [gaussian.hpp](file:///e:/Projects/Embedded/Dr.Omar%20Nasr/Project/Canny-Edge-Detection-on-RISC-V-Project/include/gaussian.hpp) / [gaussian.cpp](file:///e:/Projects/Embedded/Dr.Omar%20Nasr/Project/Canny-Edge-Detection-on-RISC-V-Project/src/gaussian.cpp) | Performs a 5x5 Gaussian convolution to remove noise and smooth the input image. |
-| **Sobel Gradient** | [sobel.hpp](file:///e:/Projects/Embedded/Dr.Omar%20Nasr/Project/Canny-Edge-Detection-on-RISC-V-Project/include/sobel.hpp) / [sobel.cpp](file:///e:/Projects/Embedded/Dr.Omar%20Nasr/Project/Canny-Edge-Detection-on-RISC-V-Project/src/sobel.cpp) | Computes horizontal ($G_x$) and vertical ($G_y$) spatial derivatives using Sobel kernels. |
-| **Gradient Magnitude**| [magnitude.hpp](file:///e:/Projects/Embedded/Dr.Omar%20Nasr/Project/Canny-Edge-Detection-on-RISC-V-Project/include/magnitude.hpp) / [magnitude.cpp](file:///e:/Projects/Embedded/Dr.Omar%20Nasr/Project/Canny-Edge-Detection-on-RISC-V-Project/src/magnitude.cpp) | Calculates the edge strength at each pixel. Supports L1 ($|G_x| + |G_y|$) and L2 ($\sqrt{G_x^2 + G_y^2}$) norms. |
-| **Gradient Direction**| [direction.hpp](file:///e:/Projects/Embedded/Dr.Omar%20Nasr/Project/Canny-Edge-Detection-on-RISC-V-Project/include/direction.hpp) / [direction.cpp](file:///e:/Projects/Embedded/Dr.Omar%20Nasr/Project/Canny-Edge-Detection-on-RISC-V-Project/src/direction.cpp) | Quantizes the gradient angle into four discrete sectors ($0^\circ$, $45^\circ$, $90^\circ$, $135^\circ$) for Non-Maximum Suppression (NMS). |
-
----
-
-## Compilation and Execution
-
-A standard `Makefile` is provided to simplify building, running, and testing.
-
-### Makefile Targets
-
-* **Build RISC-V Binary**:
-  ```bash
-  make canny_rv
-  ```
-  Cross-compiles the C++ source files with the RISC-V bare-metal toolchain using vector extension configurations (`-march=rv64gcv -mabi=lp64d -O2`).
-  
-* **Run on QEMU User-Mode**:
-  ```bash
-  make run
-  ```
-  Invokes QEMU with a default Vector Length (`VLEN`) of 256 bits to execute the compiled RISC-V binary.
-  
-* **Verify Vector-Length-Agnostic (VLA) Correctness**:
-  ```bash
-  make run_vlen
-  ```
-  Runs the pipeline sequentially across different vector lengths (`VLEN = 128, 256, 512`) on QEMU to ensure the RVV implementation is agnostic to hardware register sizes.
-
-* **Run Host Unit Tests**:
-  ```bash
-  make test
-  ```
-  Compiles the pipeline stages natively with GoogleTest using the host's `g++` and runs unit tests to verify mathematical correctness.
-
-* **Run a Specific Test Binary on QEMU**:
-  ```bash
-  make run-test NAME=<test_name>
-  ```
-
-* **Clean Build Artifacts**:
-  ```bash
-  make clean
-  ```
-
----
+| Image I/O | `include/image_io.hpp`, `src/image_io.cpp` | Raw grayscale I/O using aligned byte buffers and metadata structures; supports 64-byte alignment and size validation. |
+| Gaussian blur | `include/gaussian.hpp`, `src/gaussian.cpp` | 5x5 separable convolution with scalar baseline. |
+| Sobel gradient | `include/sobel.hpp`, `src/sobel.cpp` | Computes `G_x` and `G_y` using standard Sobel kernels. |
+| Magnitude | `include/magnitude.hpp`, `src/magnitude.cpp` | Computes edge magnitude using both L1 (`|G_x| + |G_y|`) and L2 (`sqrt(G_x^2 + G_y^2)`) norms. |
+| Direction | `include/direction.hpp`, `src/direction.cpp` | Quantizes gradient orientation into four discrete sectors for downstream NMS. |
 
 ## Documentation
 
-Source code documentation is generated from inline Doxygen-formatted comments. 
+Code documentation is generated from inline Doxygen comments and configuration in `Doxyfile`. HTML output is written to `docs/html`.
 
-To generate the documentation:
+Generate docs:
 ```bash
 make docs
 ```
-Open `docs/html/index.html` in your web browser to explore the modules, class structure, and file dependencies.
+Open:
+```bash
+xdg-open docs/html/index.html
+```
 
----
+## Verification commands
+
+* `make test` — host-side unit test execution.
+* `make image-io-test` — image I/O regression test.
+* `make canny_rv` — cross-compile RISC-V target binary.
+* `make run` — execute the RISC-V binary in QEMU.
+* `make run_vlen` — validate vector-length independence.
+
+## Notes
+
+* Target architecture: `rv64gcv`.
+* Emulation: QEMU user-mode (`qemu-riscv64`).
+* Host compiler uses `-std=c++17` and GoogleTest integration.
+* `assets/*.raw` are commit-safe; generated `.png` files are ignored.
 
 ## Authors
 
