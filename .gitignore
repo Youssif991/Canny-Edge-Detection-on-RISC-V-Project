@@ -49,6 +49,7 @@ build/*.txt
 # -----------------------------------------------------------------------------
 docs/
 Doxyfile.bak
+docs/latex/
 
 # -----------------------------------------------------------------------------
 # Python virtual environment (Phase tools and image viewing scripts)
