@@ -36,8 +36,8 @@ step3_qemu() {
     make -j"$JOBS"
     make install
 
-    export PATH="$QEMU_INSTALL/bin:$PATH"
-    _add_to_path "$QEMU_INSTALL/bin"
+    export PATH="$HOME/qemu-install/bin:$PATH"
+    echo 'export PATH="$HOME/qemu-install/bin:$PATH"' >> ~/.bashrc
 
     need qemu-riscv64
     success "QEMU built: $(qemu-riscv64 --version | head -1)"

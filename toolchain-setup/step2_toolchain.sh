@@ -55,8 +55,8 @@ step2_toolchain() {
     # ── Build ─────────────────────────────────────────────────────────────────
     make linux -j"$JOBS"
 
-    export PATH="$RISCV_INSTALL/bin:$PATH"
-    _add_to_path "$RISCV_INSTALL/bin"
+    export PATH="$HOME/riscv/bin:$PATH"
+    echo 'export PATH="$HOME/riscv/bin:$PATH"' >> ~/.bashrc
 
     need riscv64-unknown-linux-gnu-gcc
     success "RISC-V GCC toolchain built: $(riscv64-unknown-linux-gnu-gcc --version | head -1)"
