@@ -43,6 +43,14 @@ test: tests/host_tests.cpp
 	    -o build/host/debug/unit_tests
 	./build/host/debug/unit_tests
 
+# Critical first test — verifies full toolchain and QEMU chain
+rvv_test: tests/rvv_sanity.cpp
+	@mkdir -p build/target/debug
+	$(RV_CXX) $(RV_FLAGS) $< -o build/target/debug/rvv_sanity.elf
+	@echo "=== VLEN=128 ===" && $(QEMU) -cpu rv64,v=true,vlen=128,elen=64 build/target/debug/rvv_sanity.elf
+	@echo "=== VLEN=256 ===" && $(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/rvv_sanity.elf
+	@echo "=== VLEN=512 ===" && $(QEMU) -cpu rv64,v=true,vlen=512,elen=64 build/target/debug/rvv_sanity.elf
+
 # Run the pipeline on QEMU at default VLEN
 run: canny_rv
 	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/release/canny_rv.elf
