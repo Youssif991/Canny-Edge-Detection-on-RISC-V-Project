@@ -27,14 +27,16 @@ canny_rv_vec
 canny_tests
 
 # -----------------------------------------------------------------------------
-# Raw test images — binary files with no headers, large and not useful in repo
+# Raw test images and visualizations
 # -----------------------------------------------------------------------------
 *.raw
 *.bin
 *.gray
+*.png
 assets/*.raw
 assets/*.bin
 assets/*.gray
+assets/*.png
 
 # -----------------------------------------------------------------------------
 # Compiler reports and analysis outputs (Phase 4)
