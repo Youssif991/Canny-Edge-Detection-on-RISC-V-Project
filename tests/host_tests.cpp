@@ -10,6 +10,10 @@
 // TODO: include pipeline headers
 // TODO: add tests per stage (Phase 3)
 
+TEST(Sanity, OnePlusOne) {
+    EXPECT_EQ(1 + 1, 2);
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
