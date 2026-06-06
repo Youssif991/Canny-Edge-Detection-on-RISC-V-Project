@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
-# step2_toolchain.sh — Build the RISC-V GCC toolchain with RVV support.
-
+# -----------------------------------------------------------------------------
+# step2_toolchain.sh
+# Build the RISC-V GCC toolchain with RVV (V extension) support.
+# Produces: riscv64-unknown-elf-g++ (bare-metal Newlib toolchain)
+# Resumable: skips submodules already cloned, skips configure if already
+# done, and skips entirely if the compiler binary already exists.
+# Full clones only — shallow clones omit files needed by the build system.
+# -----------------------------------------------------------------------------
 
 step2_toolchain() {
-    info "Step 2/3 — Building RISC-V GCC toolchain (this takes 30-45 min)..."
+    info "Step 2/5 — Building RISC-V GCC toolchain (this takes 30-90 min)..."
 
-    # ── Skip entirely if already built ────────────────────────────────────────
-    if [ -f "$RISCV_INSTALL/bin/riscv64-unknown-linux-gnu-gcc" ]; then
+    # Skip entirely if already built
+    if [ -f "$RISCV_INSTALL/bin/riscv64-unknown-elf-g++" ]; then
         warn "Toolchain already built at $RISCV_INSTALL — skipping entirely."
         export PATH="$RISCV_INSTALL/bin:$PATH"
         return
@@ -16,7 +22,7 @@ step2_toolchain() {
 
     TOOLCHAIN_SRC="$HOME/riscv-gnu-toolchain"
 
-    # ── Clone main repo only if not already cloned ────────────────────────────
+    # Clone main repo only if not already cloned
     if [ ! -d "$TOOLCHAIN_SRC/.git" ]; then
         git clone https://github.com/riscv-collab/riscv-gnu-toolchain.git "$TOOLCHAIN_SRC"
     else
@@ -25,11 +31,10 @@ step2_toolchain() {
 
     cd "$TOOLCHAIN_SRC"
 
-    # ── Increase HTTP buffer to prevent mid-transfer drops ────────────────────
+    # Increase HTTP buffer to prevent mid-transfer drops
     git config --global http.postBuffer 524288000
 
-    # ── Fetch each submodule individually, skipping already-present ones ──────
-    # Full clones only — shallow clones omit files needed by the build system
+    # Fetch each submodule individually, skipping already-present ones
     for submodule in glibc binutils gdb gcc newlib; do
         if [ ! -f "$TOOLCHAIN_SRC/$submodule/.git" ] && \
            [ ! -d "$TOOLCHAIN_SRC/$submodule/.git" ]; then
@@ -40,24 +45,35 @@ step2_toolchain() {
         fi
     done
 
-    # ── Configure only if not already done ───────────────────────────────────
+    # Configure only if not already done
     if [ ! -f "$TOOLCHAIN_SRC/Makefile" ] || \
        ! grep -q "rv64gcv" "$TOOLCHAIN_SRC/Makefile" 2>/dev/null; then
         ./configure \
             --prefix="$RISCV_INSTALL" \
             --with-arch=rv64gcv \
-            --with-abi=lp64d \
-            --with-multilib-generator="rv64gcv-lp64d--"
+            --with-abi=lp64d
     else
         info "Already configured — skipping configure step."
     fi
 
-    # ── Build ─────────────────────────────────────────────────────────────────
-    make linux -j"$JOBS"
+    # Build the bare-metal Newlib toolchain (produces riscv64-unknown-elf-g++)
+    make -j"$JOBS"
 
-    export PATH="$HOME/riscv/bin:$PATH"
-    echo 'export PATH="$HOME/riscv/bin:$PATH"' >> ~/.bashrc
+    export PATH="$RISCV_INSTALL/bin:$PATH"
 
-    need riscv64-unknown-linux-gnu-gcc
-    success "RISC-V GCC toolchain built: $(riscv64-unknown-linux-gnu-gcc --version | head -1)"
+    # Verify compiler exists and reports correct version
+    need riscv64-unknown-elf-g++
+    info "Compiler version: $(riscv64-unknown-elf-g++ --version | head -1)"
+
+    # Verify it produces a valid RISC-V ELF binary
+    echo 'int main(){return 0;}' > /tmp/rvv_verify.c
+    riscv64-unknown-elf-g++ -march=rv64gcv -mabi=lp64d -o /tmp/rvv_verify /tmp/rvv_verify.c
+    local file_out
+    file_out=$(file /tmp/rvv_verify)
+    if echo "$file_out" | grep -q "RISC-V"; then
+        success "RISC-V GCC toolchain verified: produces valid RISC-V ELF binary."
+    else
+        error "Toolchain verification failed — binary is not RISC-V ELF: $file_out"
+    fi
+    rm -f /tmp/rvv_verify.c /tmp/rvv_verify
 }

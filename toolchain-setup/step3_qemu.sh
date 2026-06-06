@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# step3_qemu.sh — Build QEMU from source targeting riscv64 user-mode.
-
+# -----------------------------------------------------------------------------
+# step3_qemu.sh
+# Build QEMU from source targeting riscv64 user-mode.
+# Built with --enable-plugins for profiling support (required by hints guide).
+# Skips the build if qemu-riscv64 already exists at the install prefix.
+# -----------------------------------------------------------------------------
 
 step3_qemu() {
-    info "Step 3/3 — Building QEMU $QEMU_VERSION (riscv64 user-mode)..."
+    info "Step 3/5 — Building QEMU (riscv64 user-mode)..."
 
-    # ── Skip if already built ─────────────────────────────────────────────────
     if [ -f "$QEMU_INSTALL/bin/qemu-riscv64" ]; then
         warn "QEMU already exists at $QEMU_INSTALL — skipping build."
         export PATH="$QEMU_INSTALL/bin:$PATH"
@@ -14,31 +17,38 @@ step3_qemu() {
 
     QEMU_SRC="$HOME/qemu"
 
-    # ── Clone if not already present ──────────────────────────────────────────
     if [ ! -d "$QEMU_SRC/.git" ]; then
-        git clone https://gitlab.com/qemu-project/qemu.git "$QEMU_SRC"
+        git clone https://github.com/qemu/qemu.git "$QEMU_SRC"
     else
         info "QEMU source already cloned — skipping."
     fi
 
     cd "$QEMU_SRC"
-    git checkout "$QEMU_VERSION"
 
-    # ── Configure and build ───────────────────────────────────────────────────
     mkdir -p build && cd build
 
     ../configure \
         --target-list=riscv64-linux-user \
         --prefix="$QEMU_INSTALL" \
+        --enable-plugins \
         --disable-docs \
         --disable-system
 
     make -j"$JOBS"
     make install
 
-    export PATH="$HOME/qemu-install/bin:$PATH"
-    echo 'export PATH="$HOME/qemu-install/bin:$PATH"' >> ~/.bashrc
+    export PATH="$QEMU_INSTALL/bin:$PATH"
 
     need qemu-riscv64
-    success "QEMU built: $(qemu-riscv64 --version | head -1)"
+
+    # Verify version is 9.x or newer as required by the hints guide
+    local version
+    version=$(qemu-riscv64 --version | head -1)
+    local major
+    major=$(echo "$version" | grep -oP '\d+' | head -1)
+    if [ "$major" -ge 9 ]; then
+        success "QEMU verified: $version"
+    else
+        warn "QEMU version is $version — hints guide recommends 9.x or newer."
+    fi
 }
