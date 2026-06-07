@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <memory>
-
+#include <cstdlib>
 // -----------------------------------------------------------------------------
 // Status codes — returned by all pipeline functions instead of bool
 // -----------------------------------------------------------------------------

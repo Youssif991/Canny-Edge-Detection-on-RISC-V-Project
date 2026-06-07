@@ -47,7 +47,7 @@ template <typename PixelT, typename AccumT, typename KernelT>
                     PixelT pixel = 0;
                     if (r >= 0 && r < H && c >= 0 && c < W)
                     {
-                        pixel = input.buffer[r * W + c];
+                        pixel = input.buffer.get()[r * W + c];
                     }
 
                     sum += static_cast<AccumT>(pixel) *
@@ -57,7 +57,7 @@ template <typename PixelT, typename AccumT, typename KernelT>
 
             // Normalize by 273 and clamp to [0, 255]
             sum = sum / kernels::GAUSSIAN_NORM;
-            output.buffer[row * W + col] = static_cast<PixelT>(
+            output.buffer.get()[row * W + col] = static_cast<PixelT>(
                 std::clamp(sum, static_cast<AccumT>(0), static_cast<AccumT>(255)));
         }
     }
@@ -93,7 +93,7 @@ template <typename PixelT, typename AccumT, typename KernelT>
             {
                 const int c = col + kc;
                 // Zero-padding: out-of-bounds pixels = 0
-                PixelT pixel = (c >= 0 && c < W) ? input.buffer[row * W + c] : 0;
+                PixelT pixel = (c >= 0 && c < W) ? input.buffer.get()[row * W + c] : 0;
                 sum += static_cast<AccumT>(pixel) *
                        static_cast<AccumT>(kernels::GAUSSIAN_1X5[kc + HALF]);
             }
@@ -118,7 +118,7 @@ template <typename PixelT, typename AccumT, typename KernelT>
                        static_cast<AccumT>(kernels::GAUSSIAN_1X5[kr + HALF]);
             }
             sum = sum / kernels::GAUSSIAN_1D_NORM;
-            output.buffer[row * W + col] = static_cast<PixelT>(
+            output.buffer.get()[row * W + col] = static_cast<PixelT>(
                 std::clamp(sum, static_cast<AccumT>(0), static_cast<AccumT>(255)));
         }
     }
