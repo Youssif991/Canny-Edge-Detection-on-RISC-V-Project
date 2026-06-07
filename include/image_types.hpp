@@ -69,3 +69,36 @@ struct metadata_t
     metadata_t(metadata_t&&)            = default;
     metadata_t& operator=(metadata_t&&) = default;
 };
+
+// -----------------------------------------------------------------------------
+// Kernel type alias — int16_t coefficients for integer convolution
+// -----------------------------------------------------------------------------
+
+/// 5x5 convolution kernel stored in row-major order
+using Kernel5x5 = int16_t[5][5];
+
+/// 1x5 separable kernel
+using Kernel1x5 = int16_t[5];
+
+namespace kernels
+{
+
+/// 5x5 Gaussian kernel, sigma≈1.0, integer coefficients summing to 273
+constexpr Kernel5x5 GAUSSIAN_5X5 = {
+    { 1,  4,  7,  4,  1},
+    { 4, 16, 26, 16,  4},
+    { 7, 26, 41, 26,  7},
+    { 4, 16, 26, 16,  4},
+    { 1,  4,  7,  4,  1}
+};
+
+/// 1x5 Gaussian kernel for separable implementation, sum = 17
+constexpr Kernel1x5 GAUSSIAN_1X5 = {1, 4, 7, 4, 1};
+
+/// Normalization divisor for 5x5 kernel
+constexpr int32_t GAUSSIAN_NORM   = 273;
+
+/// Normalization divisor for each separable pass
+constexpr int32_t GAUSSIAN_1D_NORM = 17;
+
+} // namespace kernels
