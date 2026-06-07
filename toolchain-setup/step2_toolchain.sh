@@ -31,15 +31,12 @@ step2_toolchain() {
 
     cd "$TOOLCHAIN_SRC"
 
-    # Increase HTTP buffer to prevent mid-transfer drops
-    git config --global http.postBuffer 524288000
-
     # Fetch each submodule individually, skipping already-present ones
     for submodule in glibc binutils gdb gcc newlib; do
         if [ ! -f "$TOOLCHAIN_SRC/$submodule/.git" ] && \
            [ ! -d "$TOOLCHAIN_SRC/$submodule/.git" ]; then
             info "Fetching missing submodule: $submodule (full clone)..."
-            git submodule update --init --progress -- "$submodule"
+            git -c http.postBuffer=524288000 submodule update --init --progress -- "$submodule"
         else
             info "Submodule already present: $submodule — skipping."
         fi

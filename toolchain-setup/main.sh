@@ -38,7 +38,7 @@ _setup_paths
 echo ""
 success "Environment ready. All tools installed."
 echo ""
-echo "  Toolchain : $RISCV_INSTALL/bin/riscv64-unknown-linux-gnu-gcc"
+echo "  Toolchain : $RISCV_INSTALL/bin/riscv64-unknown-elf-g++"
 echo "  QEMU      : $QEMU_INSTALL/bin/qemu-riscv64"
 echo "  Project   : $HOME/$PROJECT_TITLE"
 echo "  Python    : $HOME/$PROJECT_TITLE/$VENV_DIR"

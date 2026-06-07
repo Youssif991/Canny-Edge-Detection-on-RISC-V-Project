@@ -18,9 +18,11 @@ Required components:
 * GoogleTest installed and accessible via `$(HOME)/googletest-installed`.
 * Doxygen 1.9.8 for documentation generation.
 
+The setup scripts also install additional documentation and runtime dependencies including Doxygen GUI components, LaTeX support, Graphviz, Qt5 runtime libraries, and RISC-V cross compiler packaging.
+
 Recommended packages for Ubuntu/Debian:
 ```bash
-sudo apt install build-essential bison flex libssl-dev libz-dev python3 python3-venv cmake doxygen graphviz
+sudo apt install build-essential bison flex libssl-dev libz-dev python3 python3-venv python3-pip cmake doxygen doxygen-gui doxygen-latex doxygen-doc graphviz
 ```
 
 ## Repository setup

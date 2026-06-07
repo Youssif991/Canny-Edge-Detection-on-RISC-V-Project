@@ -45,7 +45,7 @@ step3_qemu() {
     local version
     version=$(qemu-riscv64 --version | head -1)
     local major
-    major=$(echo "$version" | grep -oP '\d+' | head -1)
+    major=$(echo "$version" | grep -o '[0-9]\+' | head -1)
     if [ "$major" -ge 9 ]; then
         success "QEMU verified: $version"
     else
