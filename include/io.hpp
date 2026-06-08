@@ -1,18 +1,20 @@
 /**
- * @file    image_io.hpp
- * @brief   Utilities for loading and saving raw grayscale image data.
+ * @file    io.hpp
+ * @brief   Utilities for loading and saving raw grayscale image data for RISC-V.
+ *
+ * This module provides type-safe, aligned memory allocation and IO operations
+ * designed for high-performance image processing.
  *
  * Raw format: exactly width * height bytes, one byte per pixel.
  * No headers, no compression — caller must supply width and height.
- * All buffers are 64-byte aligned for RVV vector load intrinsics (Phase 6)
+ * All buffers are 64-byte aligned for RVV vector load intrinsics
  * and to help the compiler vectorize loads and stores.
- *
- * @author  Youssef
  */
 
 #pragma once
-#include "image_types.hpp"
-#include "image_utils.hpp"
+
+#include "std_types.hpp"
+#include "utils.hpp"
 #include <string_view>
 #include <cstdlib>
 #include <filesystem>
@@ -23,22 +25,17 @@ namespace image::io
 {
 
 /**
- * @brief   Load a raw binary image file from the assets directory into an
- *          aligned RAII buffer stored inside the metadata struct.
- *
- * Allocates 64-byte aligned memory via aligned_alloc to satisfy RISC-V
- * vector intrinsic requirements and cache line alignment.
- * Files are looked up relative to the ./assets/ directory.
- *
- * @tparam  PixelT      Pixel component type (default: uint8_t for grayscale).
- * @param   file_name   Name of the raw file to load (e.g. "input.raw").
- * @param   metadata    Metadata struct with width and height pre-filled.
- *                      Buffer, pixel_count, and aligned_buffer_size are
- *                      populated on success.
- * @return  Status::E_OK on success, or an error code on failure.
+ * @brief   Loads a raw binary file from disk into an aligned RAII buffer.
+ * Allocates 64-byte aligned memory to satisfy RISC-V vector and cache line requirements.
+ * Files are expected to be located in the `./assets/` directory.
+ * 
+ * @tparam  PixelT              The pixel component type (e.g., uint8_t, uint16_t, float).
+ * @param   file_name           Name of the raw file to load.
+ * @param   metadata            Reference to the metadata struct to be populated.
+ * @return  Status              E_OK on success, or a Status error code on failure.
  */
 template <typename PixelT = uint8_t>
-[[nodiscard]] Status load_raw(std::string_view file_name,
+[[nodiscard]] Status load_raw(const std::string_view file_name, 
                               metadata_t<PixelT>& metadata)
 {
     if (metadata.width <= 0 || metadata.height <= 0)
@@ -50,14 +47,19 @@ template <typename PixelT = uint8_t>
     const size_t total_bytes         = pixel_count * sizeof(PixelT);
     const size_t aligned_buffer_size = utils::memory::align_64(total_bytes);
 
-    // Allocate 64-byte aligned buffer
+    if (!pixel_count)
+    {
+        return Status::E_NOK;
+    }
+
+    // Allocate aligned memory for the image buffer
     void* raw_ptr = std::aligned_alloc(64, aligned_buffer_size);
     if (!raw_ptr)
     {
         return Status::E_ALLOC_FAIL;
     }
 
-    // Transfer ownership into RAII unique_ptr — auto-freed on scope exit
+    // Update the existing Metadata struct in-place
     metadata.buffer.reset(static_cast<PixelT*>(raw_ptr));
     metadata.pixel_count         = pixel_count;
     metadata.aligned_buffer_size = aligned_buffer_size;
@@ -84,28 +86,27 @@ template <typename PixelT = uint8_t>
 }
 
 /**
- * @brief   Save pixel data from a metadata buffer to a raw binary file.
- *
- * Writes exactly pixel_count * sizeof(PixelT) bytes to the ./assets/
- * directory. Alignment padding is not written — only actual pixel data.
- *
- * @tparam  PixelT      Pixel component type (default: uint8_t for grayscale).
- * @param   file_name   Name of the file to create or overwrite.
- * @param   metadata    Metadata struct containing the image buffer and dimensions.
- * @return  Status::E_OK on success, or an error code on failure.
+ * @brief   Saves pixel data from a buffer to a raw binary file.
+ * Writes the specified raw pixel data to the `./assets/` directory.
+ * Does not write the alignment padding, only the actual pixel data.
+ * 
+ * @tparam  PixelT          The pixel component type (e.g., uint8_t, uint16_t, float).
+ * @param   file_name       Name of the file to create or overwrite.
+ * @param   metadata        The metadata struct containing the image buffer and dimensions.
+ * @return  Status          E_OK on success, or a Status error code on failure.
  */
 template <typename PixelT = uint8_t>
-[[nodiscard]] Status save_raw(std::string_view file_name,
+[[nodiscard]] Status save_raw(const std::string_view file_name,
                               const metadata_t<PixelT>& metadata)
 {
-    if (!metadata.buffer)
+    if(!metadata.buffer)
     {
         return Status::E_INVAL_PTR;
     }
 
-    if (!metadata.pixel_count)
+    if(!metadata.pixel_count)
     {
-        return Status::E_INVAL_SIZE;
+        return Status::E_NOK;
     }
 
     std::filesystem::path file_path = std::filesystem::path("./assets/") / file_name;
@@ -116,8 +117,10 @@ template <typename PixelT = uint8_t>
         return Status::E_INVAL_DIR;
     }
 
+    // Calculate actual data size
     const size_t total_bytes = metadata.pixel_count * sizeof(PixelT);
 
+    // Write raw bytes to disk
     if (!file.write(reinterpret_cast<const char*>(metadata.buffer.get()), total_bytes))
     {
         return Status::E_WRITE_FAIL;
