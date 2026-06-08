@@ -1,18 +1,23 @@
 #include <gtest/gtest.h>
-#include "image_io.hpp"
+#include "io.hpp"
+#include "utils.hpp"
 
 // Non-power-of-two size as required by hints guide
 static constexpr int W = 100;
 static constexpr int H = 75;
 
 TEST(ImageIO, LoadRawRoundTrip) {
-    metadata_t<uint8_t> src(W, H);
+    image::io::metadata_t<uint8_t> src;
+    src.width = W;
+    src.height = H;
     Status st = image::io::load_raw("test_temp.raw", src);
     
     // First create a file to load
-    metadata_t<uint8_t> gen(W, H);
+    image::io::metadata_t<uint8_t> gen;
+    gen.width = W;
+    gen.height = H;
     const size_t pixel_count = static_cast<size_t>(W) * H;
-    void* raw = std::aligned_alloc(64, utils::memory::align_64(pixel_count));
+    void* raw = utils::memory::aligned_alloc(64, utils::memory::align_64(pixel_count));
     gen.buffer.reset(static_cast<uint8_t*>(raw));
     gen.pixel_count = pixel_count;
     gen.aligned_buffer_size = utils::memory::align_64(pixel_count);
@@ -22,7 +27,9 @@ TEST(ImageIO, LoadRawRoundTrip) {
 
     ASSERT_EQ(image::io::save_raw("test_temp.raw", gen), Status::E_OK);
     
-    metadata_t<uint8_t> dst(W, H);
+    image::io::metadata_t<uint8_t> dst;
+    dst.width = W;
+    dst.height = H;
     ASSERT_EQ(image::io::load_raw("test_temp.raw", dst), Status::E_OK);
     
     for (size_t i = 0; i < pixel_count; i++)
