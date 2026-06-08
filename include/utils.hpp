@@ -8,6 +8,7 @@
 #include <concepts>
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
 
 namespace utils::memory
 {
@@ -66,3 +67,21 @@ template <std::integral T>
 }
 
 } // namespace utils::memory
+
+/**
+ * @brief   Allocate a 64-byte aligned buffer and return an owning unique_ptr.
+ *
+ * Allocates `buffer_size` bytes aligned to 64 bytes and returns a
+ * `std::unique_ptr<T, deleter>` that will free the memory using
+ * `utils::memory::deleter` when destroyed.
+ *
+ * @tparam  T              Element type stored in the allocated buffer.
+ * @param   buffer_size    Number of bytes to allocate (not element count).
+ * @return  `std::unique_ptr<T, deleter>` owning the allocated memory,
+ *          or a null `unique_ptr` if allocation failed.
+ */
+template<typename T>
+inline std::unique_ptr<T, deleter> make_aligned_unique(size_t buffer_size) {
+    auto raw = static_cast<T*>(aligned_alloc(64, buffer_size));
+    return std::unique_ptr<T, deleter>(raw);
+}
