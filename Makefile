@@ -18,8 +18,8 @@ SRCS       := $(wildcard src/*.cpp)
 LIB_SRCS   := $(filter-out src/main.cpp, $(SRCS))
 TEST_SRCS  := $(wildcard tests/*.cpp)
 
-RV_FLAGS   := -std=c++17 -march=rv64gcv -mabi=lp64d -O2 -static -Iinclude
-HOST_FLAGS := -std=c++17 -O2 -Iinclude \
+RV_FLAGS   := -std=c++20 -march=rv64gcv -mabi=lp64d -O2 -static -Iinclude
+HOST_FLAGS := -std=c++20 -O2 -Iinclude \
               -I$(GTEST)/include -L$(GTEST)/lib \
               -lgtest -lgtest_main -lpthread
 

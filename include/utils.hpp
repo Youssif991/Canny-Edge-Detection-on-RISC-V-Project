@@ -8,6 +8,7 @@
 #include <concepts>
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
 
 namespace utils::memory
 {
