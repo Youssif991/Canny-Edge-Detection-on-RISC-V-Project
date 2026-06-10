@@ -10,6 +10,10 @@
 #include <cstdlib>
 #include <memory>
 
+#if defined(__riscv)
+#include <malloc.h>
+#endif
+
 namespace utils::memory
 {
 

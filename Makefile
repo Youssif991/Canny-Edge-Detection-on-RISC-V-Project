@@ -7,7 +7,7 @@
 # Compilers and tools
 # -----------------------------------------------------------------------------
 HOST_CXX := g++
-RV_CXX   := riscv64-unknown-elf-g++
+RV_CXX   := riscv64-linux-gnu-g++
 QEMU     := qemu-riscv64
 
 # -----------------------------------------------------------------------------
@@ -18,8 +18,8 @@ SRCS       := $(wildcard src/*.cpp)
 LIB_SRCS   := $(filter-out src/main.cpp, $(SRCS))
 TEST_SRCS  := $(wildcard tests/*.cpp)
 
-RV_FLAGS   := -std=c++20 -march=rv64gcv -mabi=lp64d -O2 -static -Iinclude
-HOST_FLAGS := -std=c++20 -O2 -Iinclude \
+RV_FLAGS   := -std=c++23 -march=rv64gcv -mabi=lp64d -O2 -static -Iinclude
+HOST_FLAGS := -std=c++23 -O2 -Iinclude \
               -I$(GTEST)/include -L$(GTEST)/lib \
               -lgtest -lgtest_main -lpthread
 
@@ -101,7 +101,7 @@ build/target/debug/%.elf: tests/%.cpp $(LIB_SRCS)
 
 # Run any RISC-V test by name: make run-test NAME=rvv_sanity
 run-test: build/target/debug/$(NAME).elf
-	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 $
+	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 $<
 
 # -----------------------------------------------------------------------------
 # Utilities

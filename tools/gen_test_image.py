@@ -7,7 +7,7 @@ Output: assets/*.raw
 import numpy as np
 import os
 
-W, H = 100, 75  # non-power-of-two as required by hints guide
+W, H = 512, 512  # non-power-of-two as required by hints guide
 
 os.makedirs("assets", exist_ok=True)
 
