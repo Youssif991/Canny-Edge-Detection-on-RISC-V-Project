@@ -1,10 +1,16 @@
 """
 gen_test_image.py — Generate known raw grayscale test images for the Canny pipeline.
+
 Usage:
+
     python3 tools/gen_test_image.py              # default 512x512
+
     python3 tools/gen_test_image.py 100 75       # custom dimensions
+
     python3 tools/gen_test_image.py --test       # run built-in unit tests
+
 Output: assets/*.raw
+
 Author: Youssef
 """
 
@@ -15,6 +21,8 @@ import unittest
 
 W, H = 512, 512  # non-power-of-two as required by hints guide
 
+
+class TestImageGenerator:
     ## @brief Initialize the generator with image dimensions.
     #  @param w Image width in pixels. Default: 512.
     #  @param h Image height in pixels. Default: 512.
