@@ -153,7 +153,7 @@ The pipeline is designed with embedded constraints in mind:
 
 ## Documentation
 
-Code documentation is generated from inline Doxygen comments and configuration in `Doxyfile`. It utilizes the modern **Doxygen Awesome CSS** theme, featuring a clean, responsive layout with a treeview sidebar and a built-in dark/light mode toggle. HTML output is written to `docs/html`.
+Code documentation is generated from inline Doxygen comments, configured with `docs/conf.py`, and styled with the modern, minimalist, and mobile-friendly **m.css** theme. HTML output is written to `docs/html`.
 
 ### Generate and View Documentation
 

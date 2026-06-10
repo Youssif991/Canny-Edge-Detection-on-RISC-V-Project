@@ -25,7 +25,7 @@ QEMU_VERSION="v8.2.0"
 GTEST_INSTALL="$HOME/googletest-installed"
 PROJECT_TITLE="RVV-Canny-Edge-Detection"
 VENV_DIR=".venv"
-PYTHON_PACKAGES="numpy matplotlib PyQt5"
+PYTHON_PACKAGES="numpy matplotlib PyQt5 jinja2 Pygments"
 JOBS=$(nproc)
 
 # OS detection

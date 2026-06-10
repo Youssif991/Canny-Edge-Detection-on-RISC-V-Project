@@ -109,7 +109,7 @@ run-test: build/target/debug/$(NAME).elf
 
 # Generate Doxygen documentation
 docs:
-	doxygen Doxyfile
+	python3 docs/m.css/documentation/doxygen.py docs/conf.py
 	@echo "Docs generated — open docs/html/index.html to view."
 
 # List all available host test files

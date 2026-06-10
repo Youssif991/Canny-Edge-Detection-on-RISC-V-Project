@@ -48,9 +48,10 @@ build/*.txt
 # -----------------------------------------------------------------------------
 # Doxygen generated documentation
 # -----------------------------------------------------------------------------
-docs/
-Doxyfile.bak
+docs/html/
 docs/latex/
+docs/xml/
+Doxyfile.bak
 
 # -----------------------------------------------------------------------------
 # Python virtual environment (Phase tools and image viewing scripts)
