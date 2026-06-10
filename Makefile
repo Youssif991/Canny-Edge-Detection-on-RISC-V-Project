@@ -101,8 +101,7 @@ build/target/debug/%.elf: tests/%.cpp $(LIB_SRCS)
 
 # Run any RISC-V test by name: make run-test NAME=rvv_sanity
 run-test: build/target/debug/$(NAME).elf
-	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 $
-
+	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 $<
 # -----------------------------------------------------------------------------
 # Utilities
 # -----------------------------------------------------------------------------
