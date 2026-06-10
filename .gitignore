@@ -35,6 +35,7 @@ canny_tests
 assets/*.bin
 assets/*.gray
 assets/*.png
+!assets/canny_pipeline_diagram.png
 
 # -----------------------------------------------------------------------------
 # Compiler reports and analysis outputs (Phase 4)

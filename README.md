@@ -2,6 +2,8 @@
 
 [![Doxygen](https://img.shields.io/badge/docs-Doxygen-blue)](docs/html/index.html)
 
+![Canny Edge Detection Pipeline Diagram](assets/canny_pipeline_diagram.png)
+
 ## Project Overview
 This repository implements a modular Canny edge detection pipeline in C++ with an emphasis on RISC-V Vector (RVV) acceleration. The primary target is `rv64gcv` user-mode execution under `qemu-riscv64`, with native host validation via GoogleTest.
 
@@ -126,18 +128,53 @@ make clean
 | Magnitude | `include/magnitude.hpp`, `src/magnitude.cpp` | Computes edge magnitude using both L1 (`|G_x| + |G_y|`) and L2 (`sqrt(G_x^2 + G_y^2)`) norms. |
 | Direction | `include/direction.hpp`, `src/direction.cpp` | Quantizes gradient orientation into four discrete sectors for downstream NMS. |
 
+## Technical Architecture & Design Decisions
+
+### RAII Metadata & Memory Alignment
+To facilitate high-performance execution on RISC-V targets and enable seamless auto-vectorization or explicit RVV (RISC-V Vector) intrinsic usage:
+* **`image::io::metadata_t<PixelT>`**: A templated metadata struct that manages buffer ownership using RAII via `std::unique_ptr` with a custom deleter. 
+* **64-Byte Alignment**: All memory allocations are padded and aligned to 64-byte boundaries (using `std::aligned_alloc` and `utils::memory::align_64`). This aligns image rows to cache lines and vector registers, preventing unaligned memory access penalties.
+
+### Unified Pipeline Status Codes
+Every stage of the pipeline returns a unified `Status` enumeration rather than plain booleans to support detailed diagnostic error reporting:
+* `E_OK` — Operation succeeded.
+* `E_NOK` — General failure.
+* `E_ALLOC_FAIL` — Aligned memory allocation failed.
+* `E_INVAL_PTR` — Null pointer passed to pipeline stage.
+* `E_INVAL_DIR` — Asset path not found or invalid directory.
+* `E_INVAL_SIZE` — Non-positive image width/height.
+* `E_READ_FAIL` / `E_WRITE_FAIL` — File I/O mismatch or write error.
+
+### Convolution Kernels & Arithmetic
+The pipeline is designed with embedded constraints in mind:
+* **Fixed-Point Integer Arithmetic**: The pipeline operates purely with integer arithmetic (no floating-point operations) to optimize execution on integer-only cores.
+* **Gaussian Filtering**: Features both a 2D spatial convolution using a $5 \times 5$ kernel (with coefficients summing to `273`, scaled down by `273`) and a separable 1D convolution using a $1 \times 5$ kernel (`[1, 4, 7, 4, 1]`, summing to `17`).
+* **Boundary Handling**: Image boundary pixels are processed using **zero-padding** (treating pixels outside the boundary as 0).
+
 ## Documentation
 
-Code documentation is generated from inline Doxygen comments and configuration in `Doxyfile`. HTML output is written to `docs/html`.
+Code documentation is generated from inline Doxygen comments and configuration in `Doxyfile`. It utilizes the modern **Doxygen Awesome CSS** theme, featuring a clean, responsive layout with a treeview sidebar and a built-in dark/light mode toggle. HTML output is written to `docs/html`.
 
-Generate docs:
+### Generate and View Documentation
+
+To generate the HTML documentation:
 ```bash
 make docs
 ```
-Open:
-```bash
-xdg-open docs/html/index.html
-```
+
+To open the documentation in your browser:
+* **Linux**:
+  ```bash
+  xdg-open docs/html/index.html
+  ```
+* **Windows (PowerShell)**:
+  ```powershell
+  Start-Process docs/html/index.html
+  ```
+* **macOS**:
+  ```bash
+  open docs/html/index.html
+  ```
 
 ## Verification commands
 
