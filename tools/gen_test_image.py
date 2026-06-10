@@ -13,13 +13,7 @@ import sys
 import numpy as np
 import unittest
 
-## @class TestImageGenerator
-#  @brief Generates known raw grayscale test images for pipeline stage verification.
-#
-#  All images are binary (0=black, 255=white) with dimensions W x H.
-#  Non-power-of-two dimensions are used in C++ tests to force strip-mining
-#  tail cases in RVV vectorization (Phase 6).
-class TestImageGenerator:
+W, H = 512, 512  # non-power-of-two as required by hints guide
 
     ## @brief Initialize the generator with image dimensions.
     #  @param w Image width in pixels. Default: 512.

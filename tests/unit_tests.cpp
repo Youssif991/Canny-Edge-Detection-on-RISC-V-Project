@@ -1,6 +1,6 @@
 /**
  * @file    unit_tests.cpp
- * @brief   GoogleTest suite for raw image IO and Gaussian blur.
+ * @brief   GoogleTest suite for raw image IO and Gaussian blur with performance timing.
  */
 
 #include <gtest/gtest.h>
@@ -13,9 +13,35 @@
 #include <cstring>
 #include <cstdio>
 #include <cinttypes>
+#include <chrono>
 
-namespace
-{
+// -----------------------------------------------------------------------------
+// Timing / Profiling Utilities
+// -----------------------------------------------------------------------------
+namespace {
+
+inline uint64_t get_perf_counter() {
+#ifdef HOST_MODE
+    // Use high-resolution steady clock for native host execution
+    return std::chrono::duration_cast<std::chrono::microseconds>(
+               std::chrono::steady_clock::now().time_since_epoch())
+        .count();
+#else
+    // Use RISC-V hardware cycle counter when emulated in QEMU
+    uint64_t cycles;
+    asm volatile("rdcycle %0" : "=r"(cycles));
+    return cycles;
+#endif
+}
+
+inline void print_perf_result(const char* label, uint64_t start, uint64_t end) {
+#ifdef HOST_MODE
+    std::printf("[   TIME   ] %s took %" PRIu64 " us\n", label, end - start);
+#else
+    std::printf("[  CYCLES  ] %s took %" PRIu64 " CPU cycles\n", label, end - start);
+#endif
+    std::fflush(stdout); // Force QEMU output buffering to flush immediately
+}
 
 template <typename PixelT>
 image::io::metadata_t<PixelT> allocate_image(uint32_t width, uint32_t height)
@@ -46,6 +72,10 @@ void fill_impulse(image::io::metadata_t<PixelT>& image, uint32_t x, uint32_t y, 
 
 } // namespace
 
+// -----------------------------------------------------------------------------
+// Test Suites
+// -----------------------------------------------------------------------------
+
 TEST(ImageIO, SaveLoadRoundTrip)
 {
     const uint32_t width = 100;
@@ -58,10 +88,17 @@ TEST(ImageIO, SaveLoadRoundTrip)
         source.buffer.get()[i] = static_cast<uint8_t>(i % 256);
     }
 
+    uint64_t t0 = get_perf_counter();
     ASSERT_EQ(image::io::save_raw<uint8_t>("unit_tests_roundtrip.raw", source), Status::E_OK);
+    uint64_t t1 = get_perf_counter();
+    print_perf_result("image::io::save_raw", t0, t1);
 
     auto loaded = allocate_image<uint8_t>(width, height);
+    
+    t0 = get_perf_counter();
     ASSERT_EQ(image::io::load_raw<uint8_t>("unit_tests_roundtrip.raw", loaded), Status::E_OK);
+    t1 = get_perf_counter();
+    print_perf_result("image::io::load_raw", t0, t1);
 
     for (size_t i = 0; i < pixel_count; ++i)
     {
@@ -111,8 +148,15 @@ TEST(Gaussian, UniformImage)
     auto separable_image = allocate_image<uint8_t>(dim, dim);
     fill_uniform(separable_image, static_cast<uint8_t>(128));
 
+    uint64_t t0 = get_perf_counter();
     ASSERT_EQ(processing::gaussian_spatial_5x5(spatial_image), Status::E_OK);
+    uint64_t t1 = get_perf_counter();
+    print_perf_result("gaussian_spatial_5x5 (Uniform)", t0, t1);
+
+    t0 = get_perf_counter();
     ASSERT_EQ(processing::gaussian_separable_5x5(separable_image), Status::E_OK);
+    t1 = get_perf_counter();
+    print_perf_result("gaussian_separable_5x5 (Uniform)", t0, t1);
 
     for (uint32_t y = 2; y < dim - 2; ++y)
     {
@@ -135,8 +179,15 @@ TEST(Gaussian, AllBlackImage)
     auto separable_image = allocate_image<uint8_t>(dim, dim);
     fill_uniform(separable_image, static_cast<uint8_t>(0));
 
+    uint64_t t0 = get_perf_counter();
     ASSERT_EQ(processing::gaussian_spatial_5x5(spatial_image), Status::E_OK);
+    uint64_t t1 = get_perf_counter();
+    print_perf_result("gaussian_spatial_5x5 (Black)", t0, t1);
+
+    t0 = get_perf_counter();
     ASSERT_EQ(processing::gaussian_separable_5x5(separable_image), Status::E_OK);
+    t1 = get_perf_counter();
+    print_perf_result("gaussian_separable_5x5 (Black)", t0, t1);
 
     for (size_t i = 0; i < spatial_image.pixel_count; ++i)
     {
@@ -157,8 +208,15 @@ TEST(Gaussian, ImpulseSymmetry)
     auto separable_image = allocate_image<uint8_t>(dim, dim);
     fill_impulse(separable_image, cx, cy, static_cast<uint8_t>(255));
 
+    uint64_t t0 = get_perf_counter();
     ASSERT_EQ(processing::gaussian_spatial_5x5(spatial_image), Status::E_OK);
+    uint64_t t1 = get_perf_counter();
+    print_perf_result("gaussian_spatial_5x5 (Impulse)", t0, t1);
+
+    t0 = get_perf_counter();
     ASSERT_EQ(processing::gaussian_separable_5x5(separable_image), Status::E_OK);
+    t1 = get_perf_counter();
+    print_perf_result("gaussian_separable_5x5 (Impulse)", t0, t1);
 
     const uint8_t* spatial = spatial_image.buffer.get();
     const uint8_t* separable = separable_image.buffer.get();
