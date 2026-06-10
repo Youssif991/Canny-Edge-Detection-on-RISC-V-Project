@@ -7,13 +7,15 @@ STYLESHEETS = [
     'docs/m.css/css/m-dark+documentation.compiled.css'
 ]
 
+SHOW_UNDOCUMENTED = True
+
 LINKS_NAVBAR1 = [
     ("Pages", 'pages', []),
-    ("Namespaces", 'namespaces', [])
+    ("Namespaces", 'namespaces', []),
+    ("Classes", 'annotated', [])
 ]
 
 LINKS_NAVBAR2 = [
-    ("Classes", 'annotated', []),
     ("Files", 'files', []),
     ('<a href="https://github.com/Youssif991/Canny-Edge-Detection-on-RISC-V-Project">GitHub</a>', [])
 ]
