@@ -8,4 +8,8 @@
 
 #include <cstdint>
 
-// TODO: declare functions for sobel stage
+// Compute Gx and Gy gradients from blurred image
+Status sobel_3x3(
+    const image::io::metadata_t<uint8_t>&  input,
+          image::io::metadata_t<int16_t>&  gx,
+          image::io::metadata_t<int16_t>&  gy);
