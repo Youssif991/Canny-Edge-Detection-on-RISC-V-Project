@@ -53,3 +53,40 @@ Status MagL1(const image::io::metadata_t<PixelT> &image,
 
     return Status::E_OK;
 }
+
+template <typename PixelT = uint8_t, typename GradientT = int16_t, typename MagntiudeT = float>
+Status MagL2(const image::io::metadata_t<PixelT> &image,
+             const GradientT *__restrict Gx,
+             const GradientT *__restrict Gy);
+{
+     if (!image.height || !image.width || !image.buffer)
+    {
+        return image.buffer ? Status::E_NOK : Status::E_INVAL_PTR;
+    }
+    std::unique_ptr<MagntiudeT[], utils::memory::deleter> magnitude_buffer(utils::memory::aligned_alloc(64,
+                                                                                                        utils::memory::align_64(image.pixel_count * sizeof(MagntiudeT))));
+    if (!magnitude_buffer)
+    {
+        return Status::E_ALLOC_FAIL;
+    }
+    MagntiudeT max_magnitude = 0.0f;
+    for (uint32_t i = 0; i < pixel_count; ++i)
+    {
+        MagntiudeT raw_mag = std::sqrt(static_cast<MagntiudeT>(Gx[i] * Gx[i] + Gy[i] * Gy[i]));
+        magnitude_buffer[i] = raw_mag;
+
+        if (raw_mag > max_magnitude)
+        {
+            max_magnitude = raw_mag;
+        }
+    }
+
+    PixelT *__restrict out_ptr = image.buffer.get();
+
+    for (uint32_t i = 0; i < pixel_count; ++i)
+    {
+        magitude_buffer[i] = static_cast<PixelT>((magnitude_buffer[i] * 255) / max_magnitude);
+    }
+
+    return Status::E_OK;
+}
