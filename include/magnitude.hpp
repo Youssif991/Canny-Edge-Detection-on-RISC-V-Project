@@ -7,6 +7,8 @@
 #pragma once
 
 #include <cstdint>
+#include <cmath>
+#include "std_types.hpp"
 
 /**
  * @brief Computes magnitude via L1 norm: |Gx| + |Gy|.

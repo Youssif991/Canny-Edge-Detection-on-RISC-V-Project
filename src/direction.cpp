@@ -37,4 +37,8 @@ Status Direction(const image::io::metadata_t<PixelT> &image,
         image.buffer[i] = angle;
     }
     return status::E_OK;
+
+    template <uint8_t, int16_t> Status Direction(const image::io::metadata_t<uint8_t> &,
+                 const GradientT *__restrict ,
+                 const GradientT *__restrict);
 }

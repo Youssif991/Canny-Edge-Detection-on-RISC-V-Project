@@ -7,6 +7,7 @@
 #pragma once
 
 #include <cstdint>
+#include "std_types.hpp"
 
 template <typename PixelT = uint8_t, typename GradientT = int16_t>
 Status Direction(const image::io::metadata_t<PixelT> &image,

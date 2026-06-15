@@ -17,7 +17,7 @@
  * @param[in] Gy Vertical gradient buffer.
  * @return Execution status code.
  */
-template <typename PixelT, typename GradientT, typename MagntiudeT>
+template <typename PixelT = uint8_t, typename GradientT = int16_t, typename MagntiudeT = uint16_t>
 Status MagL1(const image::io::metadata_t<PixelT> &image,
              const GradientT *__restrict Gx,
              const GradientT *__restrict Gy)
@@ -33,6 +33,7 @@ Status MagL1(const image::io::metadata_t<PixelT> &image,
         return Status::E_ALLOC_FAIL;
     }
     MagntiudeT max_magnitude = 0;
+    const uint32_t pixel_count = image.pixel_count;
     for (uint32_t i = 0; i < pixel_count; ++i)
     {
         MagntiudeT raw_mag = static_cast<MagntiudeT>(std::abs(Gx[i]) + std::abs(Gy[i]));
@@ -48,7 +49,7 @@ Status MagL1(const image::io::metadata_t<PixelT> &image,
 
     for (uint32_t i = 0; i < pixel_count; ++i)
     {
-        magitude_buffer[i] = static_cast<PixelT>((magnitude_buffer[i] * 255) / max_magnitude);
+        image.buffer[i] = static_cast<PixelT>((magnitude_buffer[i] * 255) / max_magnitude);
     }
 
     return Status::E_OK;
@@ -57,9 +58,9 @@ Status MagL1(const image::io::metadata_t<PixelT> &image,
 template <typename PixelT = uint8_t, typename GradientT = int16_t, typename MagntiudeT = float>
 Status MagL2(const image::io::metadata_t<PixelT> &image,
              const GradientT *__restrict Gx,
-             const GradientT *__restrict Gy);
+             const GradientT *__restrict Gy)
 {
-     if (!image.height || !image.width || !image.buffer)
+    if (!image.height || !image.width || !image.buffer)
     {
         return image.buffer ? Status::E_NOK : Status::E_INVAL_PTR;
     }
@@ -70,6 +71,7 @@ Status MagL2(const image::io::metadata_t<PixelT> &image,
         return Status::E_ALLOC_FAIL;
     }
     MagntiudeT max_magnitude = 0.0f;
+    const uint32_t pixel_count = image.pixel_count;
     for (uint32_t i = 0; i < pixel_count; ++i)
     {
         MagntiudeT raw_mag = std::sqrt(static_cast<MagntiudeT>(Gx[i] * Gx[i] + Gy[i] * Gy[i]));
@@ -85,8 +87,16 @@ Status MagL2(const image::io::metadata_t<PixelT> &image,
 
     for (uint32_t i = 0; i < pixel_count; ++i)
     {
-        magitude_buffer[i] = static_cast<PixelT>((magnitude_buffer[i] * 255) / max_magnitude);
+        image.buffer[i] = static_cast<PixelT>((magnitude_buffer[i] * 255) / max_magnitude);
     }
 
     return Status::E_OK;
+    
+    template status MagL1<uint8_t, int16_t, uint16_t>(const image::io::metadata_t<uint8_t>&,
+        const int16_t* __restrict,
+        const int16_t* __restrict);
+
+    template status MagL2<uint8_t, int16_t, float>(const image::io::metadata_t<uint8_t>&,
+        const int16_t* __restrict,
+        const int16_t* __restrict);
 }
