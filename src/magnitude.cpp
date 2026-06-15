@@ -54,6 +54,16 @@ Status MagL1(const image::io::metadata_t<PixelT> &image,
 
     return Status::E_OK;
 }
+/**
+ * @brief Compute L2 gradient magnitude (Euclidean norm) and normalize to [0,255].
+ *
+ * Magnitude = sqrt(Gx² + Gy²). Normalizes by dividing by max magnitude.
+ *
+ * @param image Output buffer (stores normalized magnitude per pixel)
+ * @param Gx    Horizontal gradient buffer
+ * @param Gy    Vertical gradient buffer
+ * @return Status::E_OK on success, error code otherwise
+ */
 
 template <typename PixelT = uint8_t, typename GradientT = int16_t, typename MagntiudeT = float>
 Status MagL2(const image::io::metadata_t<PixelT> &image,
@@ -91,12 +101,12 @@ Status MagL2(const image::io::metadata_t<PixelT> &image,
     }
 
     return Status::E_OK;
-    
-    template status MagL1<uint8_t, int16_t, uint16_t>(const image::io::metadata_t<uint8_t>&,
-        const int16_t* __restrict,
-        const int16_t* __restrict);
 
-    template status MagL2<uint8_t, int16_t, float>(const image::io::metadata_t<uint8_t>&,
-        const int16_t* __restrict,
-        const int16_t* __restrict);
+    template status MagL1<uint8_t, int16_t, uint16_t>(const image::io::metadata_t<uint8_t> &,
+                                                      const int16_t *__restrict,
+                                                      const int16_t *__restrict);
+
+    template status MagL2<uint8_t, int16_t, float>(const image::io::metadata_t<uint8_t> &,
+                                                   const int16_t *__restrict,
+                                                   const int16_t *__restrict);
 }

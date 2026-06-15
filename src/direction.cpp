@@ -6,6 +6,18 @@
 
 #include "direction.hpp"
 
+/**
+ * @brief Quantize gradient direction to 0°, 45°, 90°, or 135°.
+ *
+ * Uses ratio |Gy|/|Gx| with thresholds 2.4 (vertical) and 0.5 (diagonal).
+ * Diagonal angle depends on sign of Gx and Gy.
+ *
+ * @param image Output buffer (stores angle per pixel)
+ * @param Gx    Horizontal gradient buffer
+ * @param Gy    Vertical gradient buffer
+ * @return Status::E_OK on success, error code otherwise
+ */
+
 template <typename PixelT = uint8_t, typename GradientT = int16_t>
 Status Direction(const image::io::metadata_t<PixelT> &image,
                  const GradientT *__restrict Gx,
@@ -38,7 +50,8 @@ Status Direction(const image::io::metadata_t<PixelT> &image,
     }
     return status::E_OK;
 
-    template <uint8_t, int16_t> Status Direction(const image::io::metadata_t<uint8_t> &,
-                 const GradientT *__restrict ,
-                 const GradientT *__restrict);
+    template <uint8_t, int16_t>
+    Status Direction(const image::io::metadata_t<uint8_t> &,
+                     const GradientT *__restrict,
+                     const GradientT *__restrict);
 }
