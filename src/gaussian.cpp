@@ -283,7 +283,7 @@ Status gaussian_separable_5x5(image::io::metadata_t<PixelT>& input_image)
     return Status::E_OK;
 }
 
-// Explicit instantiations — required since implementation is in .cpp
+
 template Status gaussian_spatial_5x5<uint8_t,  int32_t>(image::io::metadata_t<uint8_t>&);
 template Status gaussian_separable_5x5<uint8_t, int32_t>(image::io::metadata_t<uint8_t>&);
 
