@@ -17,96 +17,107 @@
  * @param[in] Gy Vertical gradient buffer.
  * @return Execution status code.
  */
-template <typename PixelT = uint8_t, typename GradientT = int16_t, typename MagntiudeT = uint16_t>
-Status MagL1(const image::io::metadata_t<PixelT> &image,
-             const GradientT *__restrict Gx,
-             const GradientT *__restrict Gy)
+
+namespace processing
 {
-    if (!image.height || !image.width || !image.buffer)
+    template <typename PixelT, typename GradientT, typename MagntiudeT>
+    Status MagL1(const image::io::metadata_t<PixelT> &image,
+                 const GradientT *__restrict Gx,
+                 const GradientT *__restrict Gy)
     {
-        return image.buffer ? Status::E_NOK : Status::E_INVAL_PTR;
-    }
-    std::unique_ptr<MagntiudeT[], utils::memory::deleter> magnitude_buffer(utils::memory::aligned_alloc(64,
-                                                                                                        utils::memory::align_64(image.pixel_count * sizeof(MagntiudeT))));
-    if (!magnitude_buffer)
-    {
-        return Status::E_ALLOC_FAIL;
-    }
-    MagntiudeT max_magnitude = 0;
-    const uint32_t pixel_count = image.pixel_count;
-    for (uint32_t i = 0; i < pixel_count; ++i)
-    {
-        MagntiudeT raw_mag = static_cast<MagntiudeT>(std::abs(Gx[i]) + std::abs(Gy[i]));
-        magnitude_buffer[i] = raw_mag;
-
-        if (raw_mag > max_magnitude)
+        if (!image.height || !image.width || !image.buffer)
         {
-            max_magnitude = raw_mag;
+            return image.buffer ? Status::E_NOK : Status::E_INVAL_PTR;
         }
-    }
-
-    PixelT *__restrict out_ptr = image.buffer.get();
-
-    for (uint32_t i = 0; i < pixel_count; ++i)
-    {
-        image.buffer[i] = static_cast<PixelT>((magnitude_buffer[i] * 255) / max_magnitude);
-    }
-
-    return Status::E_OK;
-}
-/**
- * @brief Compute L2 gradient magnitude (Euclidean norm) and normalize to [0,255].
- *
- * Magnitude = sqrt(Gx² + Gy²). Normalizes by dividing by max magnitude.
- *
- * @param image Output buffer (stores normalized magnitude per pixel)
- * @param Gx    Horizontal gradient buffer
- * @param Gy    Vertical gradient buffer
- * @return Status::E_OK on success, error code otherwise
- */
-
-template <typename PixelT = uint8_t, typename GradientT = int16_t, typename MagntiudeT = float>
-Status MagL2(const image::io::metadata_t<PixelT> &image,
-             const GradientT *__restrict Gx,
-             const GradientT *__restrict Gy)
-{
-    if (!image.height || !image.width || !image.buffer)
-    {
-        return image.buffer ? Status::E_NOK : Status::E_INVAL_PTR;
-    }
-    std::unique_ptr<MagntiudeT[], utils::memory::deleter> magnitude_buffer(utils::memory::aligned_alloc(64,
-                                                                                                        utils::memory::align_64(image.pixel_count * sizeof(MagntiudeT))));
-    if (!magnitude_buffer)
-    {
-        return Status::E_ALLOC_FAIL;
-    }
-    MagntiudeT max_magnitude = 0.0f;
-    const uint32_t pixel_count = image.pixel_count;
-    for (uint32_t i = 0; i < pixel_count; ++i)
-    {
-        MagntiudeT raw_mag = std::sqrt(static_cast<MagntiudeT>(Gx[i] * Gx[i] + Gy[i] * Gy[i]));
-        magnitude_buffer[i] = raw_mag;
-
-        if (raw_mag > max_magnitude)
+        auto mag_raw = static_cast<MagntiudeT *>(
+            utils::memory::aligned_alloc(64,
+                                         utils::memory::align_64(image.pixel_count * sizeof(MagntiudeT))));
+        if (!mag_raw)
+            return Status::E_ALLOC_FAIL;
+        std::unique_ptr<MagntiudeT[], utils::memory::deleter> magnitude_buffer(mag_raw);
+        if (!magnitude_buffer)
         {
-            max_magnitude = raw_mag;
+            return Status::E_ALLOC_FAIL;
         }
+        MagntiudeT max_magnitude = 0;
+        const uint32_t pixel_count = image.pixel_count;
+        for (uint32_t i = 0; i < pixel_count; ++i)
+        {
+            MagntiudeT raw_mag = static_cast<MagntiudeT>(std::abs(Gx[i]) + std::abs(Gy[i]));
+            magnitude_buffer[i] = raw_mag;
+
+            if (raw_mag > max_magnitude)
+            {
+                max_magnitude = raw_mag;
+            }
+        }
+
+        PixelT *__restrict out_ptr = image.buffer.get();
+
+        for (uint32_t i = 0; i < pixel_count; ++i)
+        {
+            image.buffer.get()[i] = static_cast<PixelT>((magnitude_buffer[i] * 255) / max_magnitude);
+        }
+
+        return Status::E_OK;
     }
+    /**
+     * @brief Compute L2 gradient magnitude (Euclidean norm) and normalize to [0,255].
+     *
+     * Magnitude = sqrt(Gx² + Gy²). Normalizes by dividing by max magnitude.
+     *
+     * @param image Output buffer (stores normalized magnitude per pixel)
+     * @param Gx    Horizontal gradient buffer
+     * @param Gy    Vertical gradient buffer
+     * @return Status::E_OK on success, error code otherwise
+     */
 
-    PixelT *__restrict out_ptr = image.buffer.get();
-
-    for (uint32_t i = 0; i < pixel_count; ++i)
+    template <typename PixelT, typename GradientT, typename MagntiudeT>
+    Status MagL2(const image::io::metadata_t<PixelT> &image,
+                 const GradientT *__restrict Gx,
+                 const GradientT *__restrict Gy)
     {
-        image.buffer[i] = static_cast<PixelT>((magnitude_buffer[i] * 255) / max_magnitude);
+        if (!image.height || !image.width || !image.buffer)
+        {
+            return image.buffer ? Status::E_NOK : Status::E_INVAL_PTR;
+        }
+        auto mag_raw = static_cast<MagntiudeT *>(
+            utils::memory::aligned_alloc(64,
+                                         utils::memory::align_64(image.pixel_count * sizeof(MagntiudeT))));
+        if (!mag_raw)
+            return Status::E_ALLOC_FAIL;
+        std::unique_ptr<MagntiudeT[], utils::memory::deleter> magnitude_buffer(mag_raw);
+        if (!magnitude_buffer)
+        {
+            return Status::E_ALLOC_FAIL;
+        }
+        MagntiudeT max_magnitude = 0.0f;
+        const uint32_t pixel_count = image.pixel_count;
+        for (uint32_t i = 0; i < pixel_count; ++i)
+        {
+            MagntiudeT raw_mag = std::sqrt(static_cast<MagntiudeT>(Gx[i] * Gx[i] + Gy[i] * Gy[i]));
+            magnitude_buffer[i] = raw_mag;
+
+            if (raw_mag > max_magnitude)
+            {
+                max_magnitude = raw_mag;
+            }
+        }
+
+        PixelT *__restrict out_ptr = image.buffer.get();
+
+        for (uint32_t i = 0; i < pixel_count; ++i)
+        {
+            image.buffer.get()[i] = static_cast<PixelT>((magnitude_buffer[i] * 255) / max_magnitude);
+        }
+
+        return Status::E_OK;
     }
-
-    return Status::E_OK;
-
-    template status MagL1<uint8_t, int16_t, uint16_t>(const image::io::metadata_t<uint8_t> &,
+    template Status MagL1<uint8_t, int16_t, uint16_t>(const image::io::metadata_t<uint8_t> &,
                                                       const int16_t *__restrict,
                                                       const int16_t *__restrict);
 
-    template status MagL2<uint8_t, int16_t, float>(const image::io::metadata_t<uint8_t> &,
+    template Status MagL2<uint8_t, int16_t, float>(const image::io::metadata_t<uint8_t> &,
                                                    const int16_t *__restrict,
                                                    const int16_t *__restrict);
 }

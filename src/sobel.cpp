@@ -89,8 +89,8 @@ namespace processing
 
         return Status::E_OK;
     }
-    template Status sobel_3x3<uint8_t, uint16_t>(
+    template Status sobel_3x3<uint8_t, int16_t>(
         const image::io::metadata_t<uint8_t> &,
-        image::io::metadata_t<uint16_t> &,
-        image::io::metadata_t<uint16_t> &);
+        image::io::metadata_t<int16_t> &,
+        image::io::metadata_t<int16_t> &);
 } // namespace processing
