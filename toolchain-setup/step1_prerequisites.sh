@@ -20,10 +20,10 @@ step1_prerequisites() {
             libmpc-dev libmpfr-dev libgmp-dev zlib1g-dev \
             libexpat1-dev libssl-dev python3 python3-venv python3-pip \
             doxygen doxygen-gui doxygen-latex doxygen-doc graphviz \
-            pkg-config curl wget libpulse0 libgtk-3-0 libasound2 \
+            pkg-config curl wget libpulse0 libgtk-3-0t64 libasound2t64 \
             libdbus-1-3 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 \
             libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 \
-            libxcb-xinput0 libxcb-xfixes0 libqt5gui5 \
+            libxcb-xinput0 libxcb-xfixes0 libqt5gui5t64 \
             gcc-riscv64-linux-gnu g++-riscv64-linux-gnu \
             binutils-riscv64-linux-gnu libc6-dev-riscv64-cross
 
