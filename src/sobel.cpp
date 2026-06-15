@@ -90,4 +90,8 @@ Status sobel_3x3(
 
     return Status::E_OK;
 }
+template <uint8_t, uint16_t> Status sobel_3x3(
+    const image::io::metadata_t<PixelT>&  input,
+          image::io::metadata_t<OutputT>& gx,
+          image::io::metadata_t<OutputT>& gy)
 } // namespace processing
