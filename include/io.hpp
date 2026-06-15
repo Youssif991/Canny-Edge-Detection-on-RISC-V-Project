@@ -35,7 +35,7 @@ namespace image::io
  * @return  Status              E_OK on success, or a Status error code on failure.
  */
 template <typename PixelT = uint8_t>
-[[nodiscard]] Status load_raw(const std::string_view file_name, 
+Status load_raw(const std::string_view file_name, 
                               metadata_t<PixelT>& metadata)
 {
     if (metadata.width <= 0 || metadata.height <= 0)
@@ -96,7 +96,7 @@ template <typename PixelT = uint8_t>
  * @return  Status          E_OK on success, or a Status error code on failure.
  */
 template <typename PixelT = uint8_t>
-[[nodiscard]] Status save_raw(const std::string_view file_name,
+Status save_raw(const std::string_view file_name,
                               const metadata_t<PixelT>& metadata)
 {
     if(!metadata.buffer)
