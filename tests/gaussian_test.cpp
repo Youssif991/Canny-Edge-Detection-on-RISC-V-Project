@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <memory>
+#include <gtest/gtest.h>
 #include "std_types.hpp"
 #include "io.hpp"
 #include "gaussian.hpp"
