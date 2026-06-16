@@ -117,6 +117,14 @@ list-tests:
 	@echo "Available test files:"
 	@ls tests/*.cpp | xargs -n1 basename | sed 's/\.cpp//'
 
+# View raw image files: make view FILE=output
+view:
+ifndef FILE
+	$(error Usage: make view FILE=<path_to_raw_file>)
+endif
+	python3 tools/view_raw.py $(FILE).raw
+		
+
 # Remove all build artifacts
 clean:
 	rm -rf build/
