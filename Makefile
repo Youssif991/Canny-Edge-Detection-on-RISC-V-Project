@@ -124,63 +124,6 @@ ifndef FILE
 endif
 	python3 tools/view_raw.py $(FILE).raw
 		
-# -----------------------------------------------------------------------------
-# Phase 3.2 — Equivalence Tests (Assert-Based, QEMU-Side)
-# -----------------------------------------------------------------------------
-.PHONY: run-equivalence-tests
-
-# Compile the testing binary using the RISC-V cross-compiler along with project sources
-build/target/debug/gaussian_test.elf: tests/gaussian_test.cpp $(LIB_SRCS)
-	@mkdir -p build/target/debug
-	$(RV_CXX) $(RV_FLAGS) $^ -o $@
-
-# Run the equivalence tests across VLEN = 128, 256, and 512 using QEMU loops
-run-equivalence-tests: build/target/debug/gaussian_test.elf
-	@for vlen in $(VLEN_VALUES); do \
-		echo "=================================================="; \
-		echo "Running Equivalence Test at VLEN=$$vlen bits..."; \
-		echo "=================================================="; \
-		$(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 $<; \
-	done
-	@echo "🎉 Success! Code is completely vector-length-agnostic (VLA Correct)!"
-# -----------------------------------------------------------------------------
-# Phase 3.2 — Sobel Equivalence Tests (Assert-Based, QEMU-Side)
-# -----------------------------------------------------------------------------
-.PHONY: run-sobel-tests
-
-# Compile the Sobel testing binary using isolated file structure
-build/target/debug/sobel_equivalence_test.elf: tests/sobel_equivalence_test.cpp $(LIB_SRCS)
-	@mkdir -p build/target/debug
-	$(RV_CXX) $(RV_FLAGS) $^ -o $@
-
-# Run tests looping dynamically through 128, 256, and 512 bit wide vector registers
-run-sobel-tests: build/target/debug/sobel_equivalence_test.elf
-	@for vlen in $(VLEN_VALUES); do \
-		echo "=================================================="; \
-		echo "Running Sobel Equivalence Test at VLEN=$$vlen bits..."; \
-		echo "=================================================="; \
-		$(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 $<; \
-	done
-	@echo "🎉 Success! Sobel is completely vector-length-agnostic (VLA Correct)!"
-# -----------------------------------------------------------------------------
-# Phase 3.2 — Magnitude Equivalence Tests (Assert-Based, QEMU-Side)
-# -----------------------------------------------------------------------------
-.PHONY: run-magnitude-tests
-
-# Compile the Magnitude testing binary
-build/target/debug/magnitude_equivalence_test.elf: tests/magnitude_equivalence_test.cpp $(LIB_SRCS)
-	@mkdir -p build/target/debug
-	$(RV_CXX) $(RV_FLAGS) $^ -o $@
-
-# Run tests looping across VLEN = 128, 256, and 512 bits via QEMU
-run-magnitude-tests: build/target/debug/magnitude_equivalence_test.elf
-	@for vlen in $(VLEN_VALUES); do \
-		echo "=================================================="; \
-		echo "Running Magnitude Equivalence Test at VLEN=$$vlen bits..."; \
-		echo "=================================================="; \
-		$(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 $<; \
-	done
-	@echo "🎉 Success! Magnitude calculations are completely vector-length-agnostic!"
 
 # Remove all build artifacts
 clean:

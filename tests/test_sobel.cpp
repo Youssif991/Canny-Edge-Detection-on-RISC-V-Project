@@ -8,17 +8,6 @@
 #include "sobel.hpp"
 #include "utils.hpp"
 
-struct AlignedDeleter
-{
-    void operator()(void *ptr) const
-    {
-        if (ptr)
-        {
-            std::free(ptr);
-        }
-    }
-};
-
 TEST(SobelTest, Sobel3x3)
 {
     Status stat;

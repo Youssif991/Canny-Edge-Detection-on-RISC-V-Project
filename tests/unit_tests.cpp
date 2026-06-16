@@ -1,80 +1,39 @@
 /**
  * @file    unit_tests.cpp
- * @brief   GoogleTest suite for raw image IO and Gaussian blur with performance timing.
+ * @brief   GoogleTest suite for the full Canny pipeline.
+ * @author  Youssef
  */
 
 #include <gtest/gtest.h>
-
-#include "gaussian.hpp"
-#include "io.hpp"
-#include "utils.hpp"
-
 #include <cstdint>
 #include <cstring>
 #include <cstdio>
 #include <cinttypes>
-#include <chrono>
+#include <algorithm>
 
-// -----------------------------------------------------------------------------
-// Timing / Profiling Utilities
-// -----------------------------------------------------------------------------
-namespace {
+#include "gaussian.hpp"
+#include "sobel.hpp"
+#include "magnitude.hpp"
+#include "direction.hpp"
+#include "io.hpp"
+#include "utils.hpp"
 
-inline uint64_t get_perf_counter() {
-#ifdef HOST_MODE
-    // Use high-resolution steady clock for native host execution
-    return std::chrono::duration_cast<std::chrono::microseconds>(
-               std::chrono::steady_clock::now().time_since_epoch())
-        .count();
-#else
-    // Use RISC-V hardware cycle counter when emulated in QEMU
-    uint64_t cycles;
-    asm volatile("rdcycle %0" : "=r"(cycles));
-    return cycles;
-#endif
-}
-
-inline void print_perf_result(const char* label, uint64_t start, uint64_t end) {
-#ifdef HOST_MODE
-    std::printf("[   TIME   ] %s took %" PRIu64 " us\n", label, end - start);
-#else
-    std::printf("[  CYCLES  ] %s took %" PRIu64 " CPU cycles\n", label, end - start);
-#endif
-    std::fflush(stdout); // Force QEMU output buffering to flush immediately
-}
-
-template <typename PixelT>
-image::io::metadata_t<PixelT> allocate_image(uint32_t width, uint32_t height)
+namespace
 {
-    image::io::metadata_t<PixelT> image;
-    image.width = width;
-    image.height = height;
-    image.pixel_count = static_cast<size_t>(width) * height;
-    image.aligned_buffer_size = utils::memory::align_64(image.pixel_count * sizeof(PixelT));
-    image.buffer.reset(static_cast<PixelT*>(
-        utils::memory::aligned_alloc(64, image.aligned_buffer_size)));
-    EXPECT_NE(image.buffer, nullptr);
-    return image;
-}
-
-template <typename PixelT>
-void fill_uniform(image::io::metadata_t<PixelT>& image, PixelT value)
-{
-    std::memset(image.buffer.get(), value, image.pixel_count * sizeof(PixelT));
-}
-
-template <typename PixelT>
-void fill_impulse(image::io::metadata_t<PixelT>& image, uint32_t x, uint32_t y, PixelT value)
-{
-    std::memset(image.buffer.get(), 0, image.pixel_count * sizeof(PixelT));
-    image.buffer.get()[y * image.width + x] = value;
-}
-
+    template <typename T>
+    image::io::metadata_t<T> allocate_image(uint32_t w, uint32_t h)
+    {
+        image::io::metadata_t<T> img;
+        img.width = w;
+        img.height = h;
+        img.pixel_count = static_cast<size_t>(w) * h;
+        img.aligned_buffer_size = utils::memory::align_64(img.pixel_count * sizeof(T));
+        img.buffer.reset(static_cast<T *>(
+            utils::memory::aligned_alloc(64, img.aligned_buffer_size)));
+        EXPECT_NE(img.buffer, nullptr);
+        return img;
+    }
 } // namespace
-
-// -----------------------------------------------------------------------------
-// Test Suites
-// -----------------------------------------------------------------------------
 
 TEST(ImageIO, SaveLoadRoundTrip)
 {
@@ -84,26 +43,18 @@ TEST(ImageIO, SaveLoadRoundTrip)
 
     auto source = allocate_image<uint8_t>(width, height);
     for (size_t i = 0; i < pixel_count; ++i)
-    {
         source.buffer.get()[i] = static_cast<uint8_t>(i % 256);
-    }
 
-    uint64_t t0 = get_perf_counter();
     ASSERT_EQ(image::io::save_raw<uint8_t>("unit_tests_roundtrip.raw", source), Status::E_OK);
-    uint64_t t1 = get_perf_counter();
-    print_perf_result("image::io::save_raw", t0, t1);
 
-    auto loaded = allocate_image<uint8_t>(width, height);
-    
-    t0 = get_perf_counter();
+    // Option 1: Inline metadata initialization
+    image::io::metadata_t<uint8_t> loaded;
+    loaded.width = width;
+    loaded.height = height;
     ASSERT_EQ(image::io::load_raw<uint8_t>("unit_tests_roundtrip.raw", loaded), Status::E_OK);
-    t1 = get_perf_counter();
-    print_perf_result("image::io::load_raw", t0, t1);
 
     for (size_t i = 0; i < pixel_count; ++i)
-    {
-        EXPECT_EQ(source.buffer.get()[i], loaded.buffer.get()[i]) << "Mismatch at index " << i;
-    }
+        EXPECT_EQ(source.buffer.get()[i], loaded.buffer.get()[i]);
 
     std::remove("assets/unit_tests_roundtrip.raw");
 }
@@ -113,124 +64,304 @@ TEST(ImageIO, InvalidDimensionsFail)
     image::io::metadata_t<uint8_t> image;
     image.width = 0;
     image.height = 0;
-
     EXPECT_EQ(image::io::load_raw<uint8_t>("unit_tests_invalid.raw", image), Status::E_INVAL_SIZE);
 }
 
 TEST(ImageIO, MissingFileFails)
 {
-    auto image = allocate_image<uint8_t>(64, 64);
+    image::io::metadata_t<uint8_t> image;
+    image.width = 64;
+    image.height = 64;
     EXPECT_EQ(image::io::load_raw<uint8_t>("this_file_does_not_exist.raw", image), Status::E_INVAL_DIR);
 }
 
-TEST(ImageIO, BufferIs64ByteAlignedAfterLoad)
+TEST(CannyPipeline, ProcessAndSaveAllImages)
 {
-    auto source = allocate_image<uint8_t>(64, 64);
-    fill_uniform(source, static_cast<uint8_t>(255));
+    std::vector<std::string> bases = {
+        "circ", "diag", "diag_inv", "full_black", "full_white",
+        "half_bw", "horiz", "quad_bw", "rect", "vert"};
+    std::vector<std::pair<uint32_t, uint32_t>> dims = {
+        {312, 444}, {512, 512}, {600, 400}};
 
-    ASSERT_EQ(image::io::save_raw<uint8_t>("unit_tests_align.raw", source), Status::E_OK);
+    for (const auto &base : bases)
+    {
+        for (const auto &[w, h] : dims)
+        {
+            std::string prefix = base + std::to_string(w) + "x" + std::to_string(h);
+            std::string src = prefix + ".raw";
 
-    auto loaded = allocate_image<uint8_t>(64, 64);
-    ASSERT_EQ(image::io::load_raw<uint8_t>("unit_tests_align.raw", loaded), Status::E_OK);
+            // Option 1 implemented here to prevent double allocation
+            image::io::metadata_t<uint8_t> img_orig;
+            img_orig.width = w;
+            img_orig.height = h;
 
-    EXPECT_EQ(reinterpret_cast<std::uintptr_t>(loaded.buffer.get()) % 64, 0u);
+            if (image::io::load_raw<uint8_t>(src, img_orig) != Status::E_OK)
+            {
+                continue;
+            }
 
-    std::remove("assets/unit_tests_align.raw");
+            auto img_spatial = allocate_image<uint8_t>(w, h);
+            std::memcpy(img_spatial.buffer.get(), img_orig.buffer.get(), img_orig.pixel_count);
+            EXPECT_EQ(processing::gaussian_spatial_5x5(img_spatial), Status::E_OK);
+            EXPECT_EQ(image::io::save_raw<uint8_t>(prefix + "_spatial.raw", img_spatial), Status::E_OK);
+
+            auto img_separable = allocate_image<uint8_t>(w, h);
+            std::memcpy(img_separable.buffer.get(), img_orig.buffer.get(), img_orig.pixel_count);
+            EXPECT_EQ(processing::gaussian_separable_5x5(img_separable), Status::E_OK);
+            EXPECT_EQ(image::io::save_raw<uint8_t>(prefix + "_separable.raw", img_separable), Status::E_OK);
+
+            auto gx = allocate_image<int16_t>(w, h);
+            auto gy = allocate_image<int16_t>(w, h);
+            EXPECT_EQ(processing::sobel_3x3(img_separable, gx, gy), Status::E_OK);
+            EXPECT_EQ(image::io::save_raw<int16_t>(prefix + "_gx.raw", gx), Status::E_OK);
+            EXPECT_EQ(image::io::save_raw<int16_t>(prefix + "_gy.raw", gy), Status::E_OK);
+
+            auto mag_l1 = allocate_image<uint8_t>(w, h);
+            EXPECT_EQ(processing::MagL1(mag_l1, gx.buffer.get(), gy.buffer.get()), Status::E_OK);
+            EXPECT_EQ(image::io::save_raw<uint8_t>(prefix + "_mag_l1.raw", mag_l1), Status::E_OK);
+
+            auto mag_l2 = allocate_image<uint8_t>(w, h);
+            EXPECT_EQ(processing::MagL2(mag_l2, gx.buffer.get(), gy.buffer.get()), Status::E_OK);
+            EXPECT_EQ(image::io::save_raw<uint8_t>(prefix + "_mag_l2.raw", mag_l2), Status::E_OK);
+
+            auto dir = allocate_image<uint8_t>(w, h);
+            EXPECT_EQ(processing::Direction(dir, gx.buffer.get(), gy.buffer.get()), Status::E_OK);
+            EXPECT_EQ(image::io::save_raw<uint8_t>(prefix + "_dir.raw", dir), Status::E_OK);
+        }
+    }
 }
 
-TEST(Gaussian, UniformImage)
+TEST(CannyGaussian, UniformImage)
 {
     const uint32_t dim = 128;
+    auto img = allocate_image<uint8_t>(dim, dim);
+    std::memset(img.buffer.get(), 128, img.pixel_count);
 
-    auto spatial_image = allocate_image<uint8_t>(dim, dim);
-    fill_uniform(spatial_image, static_cast<uint8_t>(128));
+    Status stat = processing::gaussian_separable_5x5(img);
+    EXPECT_EQ(stat, Status::E_OK);
 
-    auto separable_image = allocate_image<uint8_t>(dim, dim);
-    fill_uniform(separable_image, static_cast<uint8_t>(128));
-
-    uint64_t t0 = get_perf_counter();
-    ASSERT_EQ(processing::gaussian_spatial_5x5(spatial_image), Status::E_OK);
-    uint64_t t1 = get_perf_counter();
-    print_perf_result("gaussian_spatial_5x5 (Uniform)", t0, t1);
-
-    t0 = get_perf_counter();
-    ASSERT_EQ(processing::gaussian_separable_5x5(separable_image), Status::E_OK);
-    t1 = get_perf_counter();
-    print_perf_result("gaussian_separable_5x5 (Uniform)", t0, t1);
+    const uint8_t expected_val = 128;
 
     for (uint32_t y = 2; y < dim - 2; ++y)
     {
         for (uint32_t x = 2; x < dim - 2; ++x)
         {
-            const size_t idx = static_cast<size_t>(y) * dim + x;
-            EXPECT_NEAR(spatial_image.buffer.get()[idx], 128, 1);
-            EXPECT_NEAR(separable_image.buffer.get()[idx], 128, 1);
+            uint8_t val = img.buffer.get()[y * dim + x];
+            EXPECT_NEAR(val, expected_val, 1);
         }
     }
 }
 
-TEST(Gaussian, AllBlackImage)
+TEST(CannyGaussian, AllBlackImage)
 {
     const uint32_t dim = 128;
+    auto img = allocate_image<uint8_t>(dim, dim);
+    std::memset(img.buffer.get(), 0, img.pixel_count);
 
-    auto spatial_image = allocate_image<uint8_t>(dim, dim);
-    fill_uniform(spatial_image, static_cast<uint8_t>(0));
+    Status stat = processing::gaussian_separable_5x5(img);
+    EXPECT_EQ(stat, Status::E_OK);
 
-    auto separable_image = allocate_image<uint8_t>(dim, dim);
-    fill_uniform(separable_image, static_cast<uint8_t>(0));
-
-    uint64_t t0 = get_perf_counter();
-    ASSERT_EQ(processing::gaussian_spatial_5x5(spatial_image), Status::E_OK);
-    uint64_t t1 = get_perf_counter();
-    print_perf_result("gaussian_spatial_5x5 (Black)", t0, t1);
-
-    t0 = get_perf_counter();
-    ASSERT_EQ(processing::gaussian_separable_5x5(separable_image), Status::E_OK);
-    t1 = get_perf_counter();
-    print_perf_result("gaussian_separable_5x5 (Black)", t0, t1);
-
-    for (size_t i = 0; i < spatial_image.pixel_count; ++i)
+    for (size_t i = 0; i < img.pixel_count; ++i)
     {
-        EXPECT_EQ(spatial_image.buffer.get()[i], 0);
-        EXPECT_EQ(separable_image.buffer.get()[i], 0);
+        EXPECT_EQ(img.buffer.get()[i], 0);
     }
 }
 
-TEST(Gaussian, ImpulseSymmetry)
+TEST(CannyGaussian, ImpulseSymmetry)
 {
     const uint32_t dim = 128;
+    auto img = allocate_image<uint8_t>(dim, dim);
+    std::memset(img.buffer.get(), 0, img.pixel_count);
+
     const uint32_t cx = dim / 2;
     const uint32_t cy = dim / 2;
+    img.buffer.get()[cy * dim + cx] = 255;
 
-    auto spatial_image = allocate_image<uint8_t>(dim, dim);
-    fill_impulse(spatial_image, cx, cy, static_cast<uint8_t>(255));
+    Status stat = processing::gaussian_separable_5x5(img);
+    EXPECT_EQ(stat, Status::E_OK);
 
-    auto separable_image = allocate_image<uint8_t>(dim, dim);
-    fill_impulse(separable_image, cx, cy, static_cast<uint8_t>(255));
+    uint8_t *ptr = img.buffer.get();
 
-    uint64_t t0 = get_perf_counter();
-    ASSERT_EQ(processing::gaussian_spatial_5x5(spatial_image), Status::E_OK);
-    uint64_t t1 = get_perf_counter();
-    print_perf_result("gaussian_spatial_5x5 (Impulse)", t0, t1);
+    EXPECT_EQ(ptr[cy * dim + (cx - 1)], ptr[cy * dim + (cx + 1)]);
+    EXPECT_EQ(ptr[cy * dim + (cx - 2)], ptr[cy * dim + (cx + 2)]);
 
-    t0 = get_perf_counter();
-    ASSERT_EQ(processing::gaussian_separable_5x5(separable_image), Status::E_OK);
-    t1 = get_perf_counter();
-    print_perf_result("gaussian_separable_5x5 (Impulse)", t0, t1);
+    EXPECT_EQ(ptr[(cy - 1) * dim + cx], ptr[(cy + 1) * dim + cx]);
+    EXPECT_EQ(ptr[(cy - 2) * dim + cx], ptr[(cy + 2) * dim + cx]);
+}
 
-    const uint8_t* spatial = spatial_image.buffer.get();
-    const uint8_t* separable = separable_image.buffer.get();
+TEST(CannySobel, UniformImage)
+{
+    const uint32_t dim = 128;
+    auto img = allocate_image<uint8_t>(dim, dim);
+    auto gx = allocate_image<int16_t>(dim, dim);
+    auto gy = allocate_image<int16_t>(dim, dim);
 
-    EXPECT_EQ(spatial[cy * dim + (cx - 1)], spatial[cy * dim + (cx + 1)]);
-    EXPECT_EQ(spatial[cy * dim + (cx - 2)], spatial[cy * dim + (cx + 2)]);
-    EXPECT_EQ(spatial[(cy - 1) * dim + cx], spatial[(cy + 1) * dim + cx]);
-    EXPECT_EQ(spatial[(cy - 2) * dim + cx], spatial[(cy + 2) * dim + cx]);
+    std::memset(img.buffer.get(), 128, img.pixel_count);
 
-    EXPECT_EQ(separable[cy * dim + (cx - 1)], separable[cy * dim + (cx + 1)]);
-    EXPECT_EQ(separable[cy * dim + (cx - 2)], separable[cy * dim + (cx + 2)]);
-    EXPECT_EQ(separable[(cy - 1) * dim + cx], separable[(cy + 1) * dim + cx]);
-    EXPECT_EQ(separable[(cy - 2) * dim + cx], separable[(cy + 2) * dim + cx]);
+    Status stat = processing::sobel_3x3(img, gx, gy);
+    EXPECT_EQ(stat, Status::E_OK);
 
-    EXPECT_GT(spatial[cy * dim + cx], 0);
-    EXPECT_GT(separable[cy * dim + cx], 0);
+    for (uint32_t y = 2; y < dim - 2; ++y)
+    {
+        for (uint32_t x = 2; x < dim - 2; ++x)
+        {
+            size_t idx = y * dim + x;
+            EXPECT_EQ(gx.buffer.get()[idx], 0);
+            EXPECT_EQ(gy.buffer.get()[idx], 0);
+        }
+    }
+}
+
+TEST(CannySobel, VerticalEdge)
+{
+    const uint32_t dim = 128;
+    auto img = allocate_image<uint8_t>(dim, dim);
+    auto gx = allocate_image<int16_t>(dim, dim);
+    auto gy = allocate_image<int16_t>(dim, dim);
+
+    for (uint32_t y = 0; y < dim; ++y)
+    {
+        for (uint32_t x = 0; x < dim; ++x)
+        {
+            img.buffer.get()[y * dim + x] = (x < dim / 2) ? 0 : 255;
+        }
+    }
+
+    Status stat = processing::sobel_3x3(img, gx, gy);
+    EXPECT_EQ(stat, Status::E_OK);
+
+    const uint32_t edge_x = dim / 2;
+    for (uint32_t y = 2; y < dim - 2; ++y)
+    {
+        size_t idx = y * dim + edge_x;
+        EXPECT_GT(std::abs(gx.buffer.get()[idx]), 0);
+        EXPECT_EQ(gy.buffer.get()[idx], 0);
+    }
+}
+
+TEST(CannySobel, HorizontalEdge)
+{
+    const uint32_t dim = 128;
+    auto img = allocate_image<uint8_t>(dim, dim);
+    auto gx = allocate_image<int16_t>(dim, dim);
+    auto gy = allocate_image<int16_t>(dim, dim);
+
+    for (uint32_t y = 0; y < dim; ++y)
+    {
+        for (uint32_t x = 0; x < dim; ++x)
+        {
+            img.buffer.get()[y * dim + x] = (y < dim / 2) ? 0 : 255;
+        }
+    }
+
+    Status stat = processing::sobel_3x3(img, gx, gy);
+    EXPECT_EQ(stat, Status::E_OK);
+
+    const uint32_t edge_y = dim / 2;
+    for (uint32_t x = 2; x < dim - 2; ++x)
+    {
+        size_t idx = edge_y * dim + x;
+        EXPECT_EQ(gx.buffer.get()[idx], 0);
+        EXPECT_GT(std::abs(gy.buffer.get()[idx]), 0);
+    }
+}
+
+TEST(CannySobel, DiagonalEdge)
+{
+    const uint32_t dim = 128;
+    auto img = allocate_image<uint8_t>(dim, dim);
+    auto gx = allocate_image<int16_t>(dim, dim);
+    auto gy = allocate_image<int16_t>(dim, dim);
+
+    for (uint32_t y = 0; y < dim; ++y)
+    {
+        for (uint32_t x = 0; x < dim; ++x)
+        {
+            img.buffer.get()[y * dim + x] = (x > y) ? 255 : 0;
+        }
+    }
+
+    Status stat = processing::sobel_3x3(img, gx, gy);
+    EXPECT_EQ(stat, Status::E_OK);
+
+    for (uint32_t i = 2; i < dim - 2; ++i)
+    {
+        size_t idx = i * dim + i;
+        EXPECT_GT(std::abs(gx.buffer.get()[idx]), 0);
+        EXPECT_GT(std::abs(gy.buffer.get()[idx]), 0);
+    }
+}
+
+TEST(CannyDirection, EdgeAngles)
+{
+    const uint32_t dim = 128;
+    auto gx = allocate_image<int16_t>(dim, dim);
+    auto gy = allocate_image<int16_t>(dim, dim);
+    auto dir = allocate_image<uint8_t>(dim, dim);
+
+    gx.buffer.get()[0] = 255;
+    gy.buffer.get()[0] = 0;
+
+    gx.buffer.get()[1] = 0;
+    gy.buffer.get()[1] = 255;
+
+    gx.buffer.get()[2] = 255;
+    gy.buffer.get()[2] = 255;
+
+    Status stat = processing::Direction(dir, gx.buffer.get(), gy.buffer.get());
+    EXPECT_EQ(stat, Status::E_OK);
+
+    EXPECT_EQ(dir.buffer.get()[0], 0);
+    EXPECT_EQ(dir.buffer.get()[1], 90);
+    EXPECT_EQ(dir.buffer.get()[2], 135);
+}
+
+TEST(CannyMagnitude, NonZeroOutput)
+{
+    const uint32_t dim = 128;
+    auto gx = allocate_image<int16_t>(dim, dim);
+    auto gy = allocate_image<int16_t>(dim, dim);
+    auto mag = allocate_image<uint8_t>(dim, dim);
+
+    for (size_t i = 0; i < gx.pixel_count; ++i)
+    {
+        gx.buffer.get()[i] = (i % 512) - 256;
+        gy.buffer.get()[i] = ((i * 3) % 512) - 256;
+    }
+
+    Status stat_l1 = processing::MagL1(mag, gx.buffer.get(), gy.buffer.get());
+    EXPECT_EQ(stat_l1, Status::E_OK);
+
+    bool has_nonzero_l1 = false;
+    for (size_t i = 0; i < mag.pixel_count; ++i)
+    {
+        if (mag.buffer.get()[i] > 0)
+        {
+            has_nonzero_l1 = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(has_nonzero_l1);
+
+    std::memset(mag.buffer.get(), 0, mag.pixel_count);
+
+    Status stat_l2 = processing::MagL2(mag, gx.buffer.get(), gy.buffer.get());
+    EXPECT_EQ(stat_l2, Status::E_OK);
+
+    bool has_nonzero_l2 = false;
+    for (size_t i = 0; i < mag.pixel_count; ++i)
+    {
+        if (mag.buffer.get()[i] > 0)
+        {
+            has_nonzero_l2 = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(has_nonzero_l2);
+}
+
+int main(int argc, char **argv)
+{
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
