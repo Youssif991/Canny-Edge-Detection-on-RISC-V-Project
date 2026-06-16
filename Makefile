@@ -162,6 +162,26 @@ run-sobel-tests: build/target/debug/sobel_equivalence_test.elf
 		$(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 $<; \
 	done
 	@echo "🎉 Success! Sobel is completely vector-length-agnostic (VLA Correct)!"
+# -----------------------------------------------------------------------------
+# Phase 3.2 — Magnitude Equivalence Tests (Assert-Based, QEMU-Side)
+# -----------------------------------------------------------------------------
+.PHONY: run-magnitude-tests
+
+# Compile the Magnitude testing binary
+build/target/debug/magnitude_equivalence_test.elf: tests/magnitude_equivalence_test.cpp $(LIB_SRCS)
+	@mkdir -p build/target/debug
+	$(RV_CXX) $(RV_FLAGS) $^ -o $@
+
+# Run tests looping across VLEN = 128, 256, and 512 bits via QEMU
+run-magnitude-tests: build/target/debug/magnitude_equivalence_test.elf
+	@for vlen in $(VLEN_VALUES); do \
+		echo "=================================================="; \
+		echo "Running Magnitude Equivalence Test at VLEN=$$vlen bits..."; \
+		echo "=================================================="; \
+		$(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 $<; \
+	done
+	@echo "🎉 Success! Magnitude calculations are completely vector-length-agnostic!"
+
 # Remove all build artifacts
 clean:
 	rm -rf build/
