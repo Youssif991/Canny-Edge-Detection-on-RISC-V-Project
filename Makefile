@@ -143,6 +143,25 @@ run-equivalence-tests: build/target/debug/gaussian_test.elf
 		$(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 $<; \
 	done
 	@echo "🎉 Success! Code is completely vector-length-agnostic (VLA Correct)!"
+# -----------------------------------------------------------------------------
+# Phase 3.2 — Sobel Equivalence Tests (Assert-Based, QEMU-Side)
+# -----------------------------------------------------------------------------
+.PHONY: run-sobel-tests
+
+# Compile the Sobel testing binary using isolated file structure
+build/target/debug/sobel_equivalence_test.elf: tests/sobel_equivalence_test.cpp $(LIB_SRCS)
+	@mkdir -p build/target/debug
+	$(RV_CXX) $(RV_FLAGS) $^ -o $@
+
+# Run tests looping dynamically through 128, 256, and 512 bit wide vector registers
+run-sobel-tests: build/target/debug/sobel_equivalence_test.elf
+	@for vlen in $(VLEN_VALUES); do \
+		echo "=================================================="; \
+		echo "Running Sobel Equivalence Test at VLEN=$$vlen bits..."; \
+		echo "=================================================="; \
+		$(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 $<; \
+	done
+	@echo "🎉 Success! Sobel is completely vector-length-agnostic (VLA Correct)!"
 # Remove all build artifacts
 clean:
 	rm -rf build/
