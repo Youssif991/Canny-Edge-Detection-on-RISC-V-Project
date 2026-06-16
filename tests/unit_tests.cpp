@@ -47,8 +47,7 @@ TEST(ImageIO, SaveLoadRoundTrip)
 
     ASSERT_EQ(image::io::save_raw<uint8_t>("unit_tests_roundtrip.raw", source), Status::E_OK);
 
-    // Option 1: Inline metadata initialization
-    image::io::metadata_t<uint8_t> loaded;
+        image::io::metadata_t<uint8_t> loaded;
     loaded.width = width;
     loaded.height = height;
     ASSERT_EQ(image::io::load_raw<uint8_t>("unit_tests_roundtrip.raw", loaded), Status::E_OK);
