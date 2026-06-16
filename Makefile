@@ -117,12 +117,25 @@ list-tests:
 	@echo "Available test files:"
 	@ls tests/*.cpp | xargs -n1 basename | sed 's/\.cpp//'
 
-# View raw image files: make view FILE=output
+#Generate Images
+gen-images:
+	python3 tools/gen_test_image.py
+
+# View a single raw image file: make view FILE=output
 view:
 ifndef FILE
-	$(error Usage: make view FILE=<path_to_raw_file>)
+	$(error Usage: make view FILE=<path_to_raw_file_without_extension>)
 endif
 	python3 tools/view_raw.py $(FILE).raw
+ 
+# View all raw assets in ./assets/ and save PNGs alongside each .raw file
+view_all:
+	@echo "Rendering all raw files in assets/..."
+	@for f in assets/*.raw; do \
+		echo "  [view] $$f"; \
+		python3 tools/view_raw.py $$f; \
+	done
+	@echo "Done. PNGs saved next to each .raw file in assets/."
 		
 
 # Remove all build artifacts
