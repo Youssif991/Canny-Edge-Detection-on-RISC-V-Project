@@ -53,8 +53,9 @@ namespace processing
         }
         return Status::E_OK;
     }
-    template <uint8_t, int16_t>
-    Status Direction(const image::io::metadata_t<uint8_t> &,
-                     const int16_t *__restrict,
-                     const int16_t *__restrict);
+   template Status processing::Direction<uint8_t, int16_t>(
+    const image::io::metadata_t<uint8_t> &,
+    const int16_t *__restrict,
+    const int16_t *__restrict
+);
 }
