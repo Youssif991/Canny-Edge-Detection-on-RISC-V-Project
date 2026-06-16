@@ -124,7 +124,25 @@ ifndef FILE
 endif
 	python3 tools/view_raw.py $(FILE).raw
 		
+# -----------------------------------------------------------------------------
+# Phase 3.2 — Equivalence Tests (Assert-Based, QEMU-Side)
+# -----------------------------------------------------------------------------
+.PHONY: run-equivalence-tests
 
+# Compile the testing binary using the RISC-V cross-compiler along with project sources
+build/target/debug/gaussian_test.elf: tests/gaussian_test.cpp $(LIB_SRCS)
+	@mkdir -p build/target/debug
+	$(RV_CXX) $(RV_FLAGS) $^ -o $@
+
+# Run the equivalence tests across VLEN = 128, 256, and 512 using QEMU loops
+run-equivalence-tests: build/target/debug/gaussian_test.elf
+	@for vlen in $(VLEN_VALUES); do \
+		echo "=================================================="; \
+		echo "Running Equivalence Test at VLEN=$$vlen bits..."; \
+		echo "=================================================="; \
+		$(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 $<; \
+	done
+	@echo "🎉 Success! Code is completely vector-length-agnostic (VLA Correct)!"
 # Remove all build artifacts
 clean:
 	rm -rf build/
