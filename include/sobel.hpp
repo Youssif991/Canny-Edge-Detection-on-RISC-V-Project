@@ -1,26 +1,29 @@
 /**
- * @file sobel.hpp
- * @brief Interface for the sobel pipeline stage.
- * @author Youssef
+ * @file    sobel.hpp
+ * @brief   Sobel edge detection implementations for image processing.
  */
 
 #pragma once
 
-#include <cstdint>
 #include "std_types.hpp"
+#include <cstdint>
 
-// Compute Gx and Gy gradients from blurred image
 namespace processing
 {
-    template <typename PixelT = uint8_t, typename OutputT = int16_t>
-    Status sobel_3x3(
-        const image::io::metadata_t<PixelT> &input,
-        OutputT *__restrict gx,
-        OutputT *__restrict gy);
+/** @brief Perform 3x3 Sobel edge detection on the input image.
+ * @param image The input image metadata.
+ * @param buffer_x The buffer to store the x-direction gradients.
+ * @param buffer_y The buffer to store the y-direction gradients.
+ * @return Status indicating success or failure.
+ */
+template <typename PixelT = uint8_t, typename OutputT = int16_t>
+ Status sobel_3x3(const image::io::metadata_t<PixelT>& image,
+                                OutputT* __restrict buffer_x,
+                                OutputT* __restrict buffer_y);
 
-    template <typename PixelT = uint8_t, typename OutputT = int16_t>
-    Status sobel_3x3_padded(
-        const image::io::metadata_t<PixelT> &input,
-        OutputT *__restrict gx,
-        OutputT *__restrict gy);
-}
+template <typename PixelT = uint8_t, typename OutputT = int16_t>
+ Status sobel_3x3_unbounded(const image::io::metadata_t<PixelT>& image,
+                                OutputT* __restrict buffer_x,
+                                OutputT* __restrict buffer_y);
+
+} // namespace processing

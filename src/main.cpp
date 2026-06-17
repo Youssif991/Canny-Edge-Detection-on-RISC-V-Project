@@ -15,23 +15,7 @@
 #include <sys/time.h>
 #include <algorithm>
 
-// Fallback for baremetal Newlib if it hides POSIX timers or fails to link them
-#ifndef CLOCK_MONOTONIC
-#define CLOCK_MONOTONIC 1 // Typically 1 or 4 in Newlib
-#endif
 
-#if defined(__riscv)
-extern "C" int clock_gettime(int clk_id, struct timespec *tp) {
-    (void)clk_id;
-    uint64_t time_val;
-    asm volatile ("rdtime %0" : "=r" (time_val));
-    // QEMU's default RISC-V timer runs at 10 MHz.
-    // 1 tick = 100 ns
-    tp->tv_sec = time_val / 10000000ULL;
-    tp->tv_nsec = (time_val % 10000000ULL) * 100ULL;
-    return 0;
-}
-#endif
 
 // ── Timing helper ─────────────────────────────────────────────
 static double elapsed_ms(struct timespec s, struct timespec e)
@@ -42,8 +26,8 @@ static double elapsed_ms(struct timespec s, struct timespec e)
 
 int main()
 {
-    constexpr uint32_t WIDTH  = 100;
-    constexpr uint32_t HEIGHT = 75;
+    constexpr uint32_t WIDTH  = 512;
+    constexpr uint32_t HEIGHT = 512;
     constexpr int      ITERS  = 100;
 
     // ── 1. Load image ──────────────────────────────────────────
@@ -116,10 +100,11 @@ int main()
         processing::sobel_3x3<uint8_t, int16_t>(image, gx, gy);
     )
     
-    // ── 6b. Sobel Padded ───────────────────────────────────────
-    BENCH("Sobel Padded",
-        processing::sobel_3x3_padded<uint8_t, int16_t>(image, gx, gy);
+    // ── 6b. Sobel Unbounded ────────────────────────────────────
+    BENCH("Sobel Unbounded",
+        processing::sobel_3x3_unbounded<uint8_t, int16_t>(image, gx, gy);
     )
+    
 
     // ── 7. Magnitude L1 ───────────────────────────────────────
     {

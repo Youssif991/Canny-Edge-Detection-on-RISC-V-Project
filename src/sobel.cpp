@@ -56,74 +56,41 @@ namespace processing
         const int32_t W = static_cast<int32_t>(input.width);
         const int32_t H = static_cast<int32_t>(input.height);
 
-        // Define a lambda for calculating a single pixel with clamping
-        auto process_pixel = [&](int32_t y, int32_t x) {
+        for (int32_t y = 0; y < H; ++y)
+        {
             const int32_t y_top = std::clamp(y - 1, 0, H - 1);
             const int32_t y_bot = std::clamp(y + 1, 0, H - 1);
-            const int32_t x_l   = std::clamp(x - 1, 0, W - 1);
-            const int32_t x_r   = std::clamp(x + 1, 0, W - 1);
 
             const PixelT *row_top = &input.buffer.get()[y_top * W];
             const PixelT *row_mid = &input.buffer.get()[y * W];
             const PixelT *row_bot = &input.buffer.get()[y_bot * W];
 
-            gx[y * W + x] = static_cast<OutputT>(
-                (row_top[x_r] - row_top[x_l]) +
-                ((row_mid[x_r] - row_mid[x_l]) << 1) +
-                (row_bot[x_r] - row_bot[x_l]));
-
-            gy[y * W + x] = static_cast<OutputT>(
-                (row_bot[x_l] + (row_bot[x] << 1) + row_bot[x_r]) -
-                (row_top[x_l] + (row_top[x] << 1) + row_top[x_r]));
-        };
-
-        // 1. Top border (y = 0)
-        for (int32_t x = 0; x < W; ++x) process_pixel(0, x);
-
-        // 2. Bottom border (y = H - 1)
-        if (H > 1) {
-            for (int32_t x = 0; x < W; ++x) process_pixel(H - 1, x);
-        }
-
-        // 3. Inner region and left/right borders
-        for (int32_t y = 1; y < H - 1; ++y)
-        {
-            // Left border (x = 0)
-            process_pixel(y, 0);
-
-            // Inner hot path (no clamping!)
-            const PixelT *row_top = &input.buffer.get()[(y - 1) * W];
-            const PixelT *row_mid = &input.buffer.get()[y * W];
-            const PixelT *row_bot = &input.buffer.get()[(y + 1) * W];
-
+            
             OutputT *out_gx = &gx[y * W];
             OutputT *out_gy = &gy[y * W];
 
-            for (int32_t x = 1; x < W - 1; ++x)
+            for (int32_t x = 0; x < W; ++x)
             {
-                const int32_t x_l = x - 1;
-                const int32_t x_r = x + 1;
+                const int32_t x_l = std::clamp(x - 1, 0, W - 1);
+                const int32_t x_r = std::clamp(x + 1, 0, W - 1);
 
+                
                 out_gx[x] = static_cast<OutputT>(
                     (row_top[x_r] - row_top[x_l]) +
                     ((row_mid[x_r] - row_mid[x_l]) << 1) +
                     (row_bot[x_r] - row_bot[x_l]));
 
+                
                 out_gy[x] = static_cast<OutputT>(
                     (row_bot[x_l] + (row_bot[x] << 1) + row_bot[x_r]) -
                     (row_top[x_l] + (row_top[x] << 1) + row_top[x_r]));
-            }
-
-            // Right border (x = W - 1)
-            if (W > 1) {
-                process_pixel(y, W - 1);
             }
         }
 
         return Status::E_OK;
     }
 
-    /**
+     /**
      * @brief   Compute Sobel gradients Gx and Gy from a pre-padded grayscale image.
      *
      * Similar to sobel_3x3, but expects the input image to already be padded
@@ -139,7 +106,7 @@ namespace processing
      * border pixels, and then run the clamp-free loop to see if the compiler auto-vectorizes.
      */
     template <typename PixelT, typename OutputT>
-    Status sobel_3x3_padded(
+    Status sobel_3x3_unbounded(
         const image::io::metadata_t<PixelT> &input,
         OutputT* __restrict gx,
         OutputT* __restrict gy)
@@ -210,8 +177,9 @@ namespace processing
         int16_t *,
         int16_t *);
 
-    template Status sobel_3x3_padded<uint8_t, int16_t>(
+    template Status sobel_3x3_unbounded<uint8_t, int16_t>(
         const image::io::metadata_t<uint8_t> &,
         int16_t *,
         int16_t *);
+
 } // namespace processing
