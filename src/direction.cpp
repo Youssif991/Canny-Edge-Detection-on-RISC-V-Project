@@ -40,8 +40,8 @@ namespace processing
             const uint16_t abs_x = static_cast<uint16_t>(std::abs(cur_x));
             const uint16_t abs_y = static_cast<uint16_t>(std::abs(cur_y));
 
-            const bool is_vertical = (abs_y * 5) > (abs_x * 12);
-            const bool is_diagonal = (abs_y * 2) > abs_x;
+            const bool is_vertical = (abs_y * 5) > (abs_x * 12); // |Gy|/|Gx| > 12/5 ≈ tan(67.5°)
+            const bool is_diagonal = (abs_y * 5) > (abs_x * 2);  // |Gy|/|Gx| > 2/5 ≈ tan(22.5°)
             const bool same_sign = ((cur_x > 0) && (cur_y > 0)) || ((cur_x < 0) && (cur_y < 0));
 
             const uint8_t diagonal_angle = same_sign ? 135 : 45;
@@ -53,8 +53,8 @@ namespace processing
         }
         return Status::E_OK;
     }
-    template <uint8_t, int16_t>
-    Status Direction(const image::io::metadata_t<uint8_t> &,
-                     const int16_t *__restrict,
-                     const int16_t *__restrict);
+    template Status processing::Direction<uint8_t, int16_t>(
+        const image::io::metadata_t<uint8_t> &,
+        const int16_t *__restrict,
+        const int16_t *__restrict);
 }

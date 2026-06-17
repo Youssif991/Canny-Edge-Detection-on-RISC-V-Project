@@ -1,3 +1,8 @@
+/**
+ * @file gaussian_test.cpp
+ * @brief gaussian functionality test on QEMU
+ */
+
 #include <chrono>
 #include <iostream>
 #include <cstdlib>
@@ -10,8 +15,8 @@
 int main()
 {
     Status stat;
-    const uint32_t width = 512;
-    const uint32_t height = 512;
+    const uint32_t width = 100;
+    const uint32_t height = 75;
     const size_t pixel_count = width * height;
     const size_t aligned_size = utils::memory::align_64(pixel_count);
 

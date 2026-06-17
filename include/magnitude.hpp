@@ -10,6 +10,9 @@
 #include <cmath>
 #include "std_types.hpp"
 
+namespace processing
+{
+
 /**
  * @brief Computes magnitude via L1 norm: |Gx| + |Gy|.
  * @note Fast and integer-only, but slightly overestimates diagonal edges.
@@ -41,3 +44,5 @@ template <typename PixelT = uint8_t, typename GradientT = int16_t, typename Magn
 Status MagL2(const image::io::metadata_t<PixelT>& image,
              const GradientT* __restrict Gx,
              const GradientT* __restrict Gy);
+
+} // namespace processing

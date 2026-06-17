@@ -19,14 +19,14 @@ import sys
 import numpy as np
 import unittest
 
-W, H = 512, 512  # non-power-of-two as required by hints guide
+W, H = 100, 75  # non-power-of-two as required by hints guide
 
 
 class TestImageGenerator:
     ## @brief Initialize the generator with image dimensions.
-    #  @param w Image width in pixels. Default: 512.
-    #  @param h Image height in pixels. Default: 512.
-    def __init__(self, w=512, h=512):
+    #  @param w Image width in pixels. Default: 100.
+    #  @param h Image height in pixels. Default: 75.
+    def __init__(self, w=100, h=75):
         self.w = w
         self.h = h
 
@@ -147,56 +147,56 @@ class TestImageGenerator:
 class TestTestImageGenerator(unittest.TestCase):
 
     def setUp(self):
-        self.gen = TestImageGenerator(w=512, h=512)
+        self.gen = TestImageGenerator(w=100, h=75)  # Use smaller size for faster tests
 
     def test_rect_has_white_centre(self):
         img = self.gen.rect()
-        self.assertEqual(img.shape, (512, 512))
-        self.assertEqual(img[256, 256], 255)  # inside rectangle
+        self.assertEqual(img.shape, (100, 75))
+        self.assertEqual(img[38, 38], 255)  # inside rectangle
         self.assertEqual(img[0,   0],   0)    # outside rectangle
 
     def test_vertical_edge_left_black_right_white(self):
         img = self.gen.vertical_edge()
-        self.assertEqual(img.shape, (512, 512))
+        self.assertEqual(img.shape, (100, 75))
         self.assertEqual(img[256, 50],  0)    # left half black
         self.assertEqual(img[256, 460], 255)  # right half white
 
     def test_horizontal_edge_top_black_bottom_white(self):
         img = self.gen.horizontal_edge()
-        self.assertEqual(img.shape, (512, 512))
+        self.assertEqual(img.shape, (100, 75))
         self.assertEqual(img[50,  256], 0)    # top half black
         self.assertEqual(img[460, 256], 255)  # bottom half white
 
     def test_circle_centre_white_corner_black(self):
         img = self.gen.circle()
-        self.assertEqual(img.shape, (512, 512))
-        self.assertEqual(img[256, 256], 255)  # centre white
+        self.assertEqual(img.shape, (100, 75))
+        self.assertEqual(img[38, 38], 255)  # centre white
         self.assertEqual(img[0,   0],   0)    # corner black
 
     def test_uniform_all_128(self):
         img = self.gen.uniform()
-        self.assertEqual(img.shape, (512, 512))
+        self.assertEqual(img.shape, (100, 75))
         self.assertTrue(np.all(img == 128))
 
     def test_full_black_all_zero(self):
         img = self.gen.full_black()
-        self.assertEqual(img.shape, (512, 512))
+        self.assertEqual(img.shape, (100, 75))
         self.assertTrue(np.all(img == 0))
 
     def test_full_white_all_255(self):
         img = self.gen.full_white()
-        self.assertEqual(img.shape, (512, 512))
+        self.assertEqual(img.shape, (100, 75))
         self.assertTrue(np.all(img == 255))
 
     def test_diagonal_edge_top_right_white(self):
         img = self.gen.diagonal_edge()
-        self.assertEqual(img.shape, (512, 512))
+        self.assertEqual(img.shape, (100, 75))
         self.assertEqual(img[10, 500], 255)   # top-right white
         self.assertEqual(img[500, 10], 0)     # bottom-left black
 
     def test_diagonal_edge_inv_top_left_white(self):
         img = self.gen.diagonal_edge_inv()
-        self.assertEqual(img.shape, (512, 512))
+        self.assertEqual(img.shape, (100, 75))
         self.assertEqual(img[10, 10],   255)  # top-left white
         self.assertEqual(img[500, 500], 0)    # bottom-right black
 
@@ -205,7 +205,7 @@ class TestTestImageGenerator(unittest.TestCase):
         for img in [gen.rect(), gen.vertical_edge(), gen.horizontal_edge(),
                     gen.diagonal_edge(), gen.diagonal_edge_inv(),
                     gen.circle(), gen.uniform(), gen.full_black(), gen.full_white()]:
-            self.assertEqual(img.shape, (512, 512))
+            self.assertEqual(img.shape, (100, 75))
 
 
 if __name__ == "__main__":
@@ -214,8 +214,8 @@ if __name__ == "__main__":
         unittest.main()
     else:
         try:
-            w = int(sys.argv[1]) if len(sys.argv) > 1 else 512
-            h = int(sys.argv[2]) if len(sys.argv) > 2 else 512
+            w = int(sys.argv[1]) if len(sys.argv) > 1 else 100
+            h = int(sys.argv[2]) if len(sys.argv) > 2 else 75
         except ValueError:
             print("Invalid dimensions. Usage: python3 tools/gen_test_image.py [width] [height]")
             sys.exit(1)

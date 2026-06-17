@@ -74,14 +74,33 @@ endif
 # RISC-V tests
 # -----------------------------------------------------------------------------
 
-# Critical first test — verifies full toolchain and QEMU chain
-rvv_test: tests/rvv_sanity.cpp
+# Command pattern: make rvv_test FILE=your_test_filename
+rvv_test:
 	@mkdir -p build/target/debug
-	$(RV_CXX) $(RV_FLAGS) $< -o build/target/debug/rvv_sanity.elf
-	@echo "=== VLEN=128 ===" && $(QEMU) -cpu rv64,v=true,vlen=128,elen=64 build/target/debug/rvv_sanity.elf
-	@echo "=== VLEN=256 ===" && $(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/rvv_sanity.elf
-	@echo "=== VLEN=512 ===" && $(QEMU) -cpu rv64,v=true,vlen=512,elen=64 build/target/debug/rvv_sanity.elf
+	@if [ ! -f "tests/$(FILE).cpp" ]; then \
+		echo "Error: tests/$(FILE).cpp not found!"; exit 1; \
+	fi
+	
+	@echo "Compiling tests/$(FILE).cpp with library dependencies..."
+	$(RV_CXX) $(RV_FLAGS) tests/$(FILE).cpp $(LIB_SRCS) -o build/target/debug/$(FILE).elf
+	
+	@echo "\n=== Running under QEMU simulations ==="
+	@echo "=== VLEN=128 ===" && $(QEMU) -cpu rv64,v=true,vlen=128,elen=64 build/target/debug/$(FILE).elf
+	@echo "=== VLEN=256 ===" && $(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/$(FILE).elf
+	@echo "=== VLEN=512 ===" && $(QEMU) -cpu rv64,v=true,vlen=512,elen=64 build/target/debug/$(FILE).elf
 
+# Run a specific QEMU test at a chosen VLEN: make rvv_test_vlen FILE=gaussian_test VLEN=256
+rvv_test_vlen:
+ifndef FILE
+	$(error Usage: make rvv_test_vlen FILE=<test_name> VLEN=<128|256|512>)
+endif
+ifndef VLEN
+	$(error Usage: make rvv_test_vlen FILE=<test_name> VLEN=<128|256|512>)
+endif
+	@mkdir -p build/target/debug
+	$(RV_CXX) $(RV_FLAGS) tests/$(FILE).cpp $(LIB_SRCS) -o build/target/debug/$(FILE).elf
+	@echo "=== Running under QEMU with VLEN=$(VLEN) ==="
+	$(QEMU) -cpu rv64,v=true,vlen=$(VLEN),elen=64 build/target/debug/$(FILE).elf
 # Run the pipeline on QEMU at default VLEN
 run: canny_rv
 	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/release/canny_rv.elf
@@ -89,9 +108,9 @@ run: canny_rv
 # Run at VLEN 128, 256, 512 to verify VLA correctness
 run_vlen: canny_rv
 	@for vlen in $(VLEN_VALUES); do \
-	    echo "=== VLEN=$$vlen ==="; \
-	    $(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 \
-	        build/target/release/canny_rv.elf; \
+		echo "=== VLEN=$$vlen ==="; \
+		$(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 \
+		    build/target/release/canny_rv.elf; \
 	done
 
 # Pattern rule — compile any test in tests/ to a RISC-V binary
@@ -101,7 +120,7 @@ build/target/debug/%.elf: tests/%.cpp $(LIB_SRCS)
 
 # Run any RISC-V test by name: make run-test NAME=rvv_sanity
 run-test: build/target/debug/$(NAME).elf
-	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 $
+	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/$(NAME).elf
 
 # -----------------------------------------------------------------------------
 # Utilities
@@ -117,12 +136,25 @@ list-tests:
 	@echo "Available test files:"
 	@ls tests/*.cpp | xargs -n1 basename | sed 's/\.cpp//'
 
-# View raw image files: make view FILE=output
+#Generate Images
+gen-images:
+	python3 tools/gen_test_image.py
+
+# View a single raw image file: make view FILE=output
 view:
 ifndef FILE
-	$(error Usage: make view FILE=<path_to_raw_file>)
+	$(error Usage: make view FILE=<path_to_raw_file_without_extension>)
 endif
 	python3 tools/view_raw.py $(FILE).raw
+ 
+# View all raw assets in ./assets/ and save PNGs alongside each .raw file
+view_all:
+	@echo "Rendering all raw files in assets/..."
+	@for f in assets/*.raw; do \
+		echo "  [view] $$f"; \
+		python3 tools/view_raw.py $$f; \
+	done
+	@echo "Done. PNGs saved next to each .raw file in assets/."
 		
 
 # Remove all build artifacts
