@@ -12,17 +12,15 @@ for flag in "${FLAGS[@]}"; do
         echo "--------------------------" | tee -a $OUTPUT_FILE
         echo "Testing Flag: $flag, VLEN: $vlen" | tee -a $OUTPUT_FILE
         
-        # Compile مع تقرير الـ Vectorization
+        # Compile
         riscv64-linux-gnu-g++ -std=c++20 -fpermissive -fPIC \
             tests/gaussian_test.cpp src/gaussian.cpp src/instantiation.cpp \
             -Iinclude -Isrc -o "gaussian_${flag}_${vlen}" $flag \
             -fopt-info-vec-all 2>> $VEC_REPORT
         
-        # قياس الحجم
+        # binary size
         ls -lh "gaussian_${flag}_${vlen}" | tee -a $OUTPUT_FILE
         
-        # التشغيل والقياس بدقة
-        # استخدام time لقياس الوقت الفعلي للتنفيذ
         { time $HOME/qemu/build/qemu-riscv64 -L /usr/riscv64-linux-gnu -cpu rv64,v=true,vlen=$vlen,elen=64 "./gaussian_${flag}_${vlen}"; } 2>&1 | tee -a $OUTPUT_FILE
         
         rm "gaussian_${flag}_${vlen}"

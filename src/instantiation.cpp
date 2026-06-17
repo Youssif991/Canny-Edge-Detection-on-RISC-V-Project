@@ -5,7 +5,6 @@
 #include <ctime>
 #include <iostream>
 
-// هذا يضمن أن الدوال يتم بناؤها هنا في هذا الملف
 template Status processing::sobel_3x3<uint8_t, int16_t>(const image::io::metadata_t<uint8_t>&, image::io::metadata_t<int16_t>&, image::io::metadata_t<int16_t>&);
 template Status processing::MagL2<uint8_t, int16_t, float>(const image::io::metadata_t<uint8_t>&, const int16_t*, const int16_t*);
 template Status processing::Direction<uint8_t, int16_t>(const image::io::metadata_t<uint8_t>&, const int16_t*, const int16_t*);
