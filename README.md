@@ -68,6 +68,10 @@ The scalar Gaussian blur kernel (both spatial 5×5 and separable implementations
 - `-O3` and `-Ofast` give the best runtime, edging out `-O2` slightly, with identical binary size.
 - `-Os` trades binary size for speed less favorably than expected here: it's smaller than `-O0` but not smaller than `-O2`/`-O3`/`-Ofast`, while still being the slowest among the optimized flags.
 - The separable Gaussian implementation consistently outperforms the spatial 5×5 convolution across every flag, confirming the expected algorithmic advantage (O(n) vs O(n²) per pixel for a 5×5 kernel).
+
+**Why `-Os` isn't the smallest binary:**
+
+`-Os` optimizes for size *relative to* `-O2` (it applies most `-O2` passes but skips ones that clearly grow code size, like aggressive loop unrolling or inlining). It is not a guarantee of the smallest binary against every other flag. In this project, the binary is statically linked (`-static` in `RV_FLAGS`), so the final size is dominated by how much of the C++ standard library and runtime gets pulled in — not just the Gaussian kernel's own instruction count. `-O0` is still the largest here because it disables nearly all optimization (no inlining, no dead code elimination, naive stack-based codegen), while `-Os`, `-O2`, `-O3`, and `-Ofast` all perform real dead-code elimination and inlining decisions that shrink the linked binary, just with different size/speed tradeoffs. The takeaway: `-Os`'s size advantage is most visible with dynamic linking or code with heavy inlining opportunity; with static linking here, that advantage narrows.
 ## Authors
 
 - [@Youssif991](https://github.com/Youssif991)
