@@ -41,14 +41,18 @@ inline void* aligned_alloc(size_t alignment, size_t size) noexcept
     if (remainder != 0) {
         size += (alignment - remainder);
     }
+#if defined(__riscv)
+    return memalign(alignment, size);
+#else
     return std::aligned_alloc(alignment, size);
+#endif
 }
 
 /**
  * @brief   Generic alignment function.
  * @param   value           The value to align.
  * @param   alignment       The alignment boundary (must be a power of 2).
- * @return                  Smallest multiple of alignment that is >= value.
+ * @return                  small multiple of alignment that is >= value.
  */
 template <std::integral T>
 [[nodiscard]] constexpr T align(T value, size_t alignment) noexcept

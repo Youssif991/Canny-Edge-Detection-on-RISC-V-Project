@@ -15,7 +15,7 @@ QEMU     := qemu-riscv64
 # -----------------------------------------------------------------------------
 GTEST      := $(HOME)/googletest-installed
 SRCS       := $(wildcard src/*.cpp)
-LIB_SRCS   := $(filter-out src/main.cpp, $(SRCS))
+LIB_SRCS   := $(filter-out src/main.cpp src/bench.cpp, $(SRCS))
 TEST_SRCS  := $(wildcard tests/*.cpp)
 
 RV_FLAGS   := -std=c++23 -march=rv64gcv -mabi=lp64d -O2 -static -Iinclude
@@ -36,6 +36,52 @@ all: canny_rv
 canny_rv: $(SRCS)
 	@mkdir -p build/target/release
 	$(RV_CXX) $(RV_FLAGS) $(SRCS) -o build/target/release/canny_rv.elf
+
+# -----------------------------------------------------------------------------
+# Phase 4 Benchmarks
+# -----------------------------------------------------------------------------
+
+bench_O0:
+	@mkdir -p build/target/release
+	$(RV_CXX) -std=gnu++23 -march=rv64gcv -mabi=lp64d -O0 -static -Iinclude $(SRCS) -o build/target/release/bench_O0.elf
+	@echo "Built bench_O0"
+
+bench_O2:
+	@mkdir -p build/target/release
+	$(RV_CXX) -std=gnu++23 -march=rv64gcv -mabi=lp64d -O2 -static -Iinclude $(SRCS) -o build/target/release/bench_O2.elf
+	@echo "Built bench_O2"
+
+bench_O3:
+	@mkdir -p build/target/release
+	$(RV_CXX) -std=gnu++23 -march=rv64gcv -mabi=lp64d -O3 -static -Iinclude $(SRCS) -o build/target/release/bench_O3.elf
+	@echo "Built bench_O3"
+
+bench_O3vec:
+	@mkdir -p build/target/release
+	$(RV_CXX) -std=gnu++23 -march=rv64gcv -mabi=lp64d -O3 -ftree-vectorize -fopt-info-vec-all -static -Iinclude $(SRCS) -o build/target/release/bench_O3vec.elf 2> build/target/release/vec_report.txt
+	@echo "Built bench_O3vec. Vectorization report saved to build/target/release/vec_report.txt"
+
+bench_sweep: bench_O0 bench_O2 bench_O3 bench_O3vec
+
+run_bench: bench_sweep
+	@echo "\n========================================================"
+	@echo "=== Step 3: Binary Sizes                             ==="
+	@echo "========================================================"
+	riscv64-unknown-elf-size build/target/release/bench_O0.elf
+	riscv64-unknown-elf-size build/target/release/bench_O2.elf
+	riscv64-unknown-elf-size build/target/release/bench_O3.elf
+	riscv64-unknown-elf-size build/target/release/bench_O3vec.elf
+	@echo "\n========================================================"
+	@echo "=== Step 6: QEMU Execution                           ==="
+	@echo "========================================================"
+	@echo "\n--- Running -O0 ---"
+	$(QEMU) -cpu rv64,v=true,vlen=128 build/target/release/bench_O0.elf
+	@echo "\n--- Running -O2 ---"
+	$(QEMU) -cpu rv64,v=true,vlen=128 build/target/release/bench_O2.elf
+	@echo "\n--- Running -O3 ---"
+	$(QEMU) -cpu rv64,v=true,vlen=128 build/target/release/bench_O3.elf
+	@echo "\n--- Running -O3 with Auto-vectorization ---"
+	$(QEMU) -cpu rv64,v=true,vlen=128 build/target/release/bench_O3vec.elf
 
 # -----------------------------------------------------------------------------
 # Host tests
