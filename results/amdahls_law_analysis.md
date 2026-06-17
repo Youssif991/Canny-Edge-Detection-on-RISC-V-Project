@@ -27,7 +27,7 @@ The following profiling breakdown was measured on the **`-O3`** binary running u
 | Direction    | 0.828      | 18.38%  | 0.051      | 15.72%  | **16.2×**     |
 | **Total**    | **4.507**  | 100%    | **0.323**  | 100%    | **~13.9×**    |
 
-> ⚠️ These are QEMU wall-clock ratios. See Section 8 for measurement caveats.
+
 
 ---
 
