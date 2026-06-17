@@ -74,13 +74,20 @@ endif
 # RISC-V tests
 # -----------------------------------------------------------------------------
 
-# Critical first test — verifies full toolchain and QEMU chain
-rvv_test: tests/rvv_sanity.cpp
+# Command pattern: make rvv_test FILE=your_test_filename
+rvv_test:
 	@mkdir -p build/target/debug
-	$(RV_CXX) $(RV_FLAGS) $< -o build/target/debug/rvv_sanity.elf
-	@echo "=== VLEN=128 ===" && $(QEMU) -cpu rv64,v=true,vlen=128,elen=64 build/target/debug/rvv_sanity.elf
-	@echo "=== VLEN=256 ===" && $(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/rvv_sanity.elf
-	@echo "=== VLEN=512 ===" && $(QEMU) -cpu rv64,v=true,vlen=512,elen=64 build/target/debug/rvv_sanity.elf
+	@if [ ! -f "tests/$(FILE).cpp" ]; then \
+		echo "Error: tests/$(FILE).cpp not found!"; exit 1; \
+	fi
+	
+	@echo "Compiling tests/$(FILE).cpp with library dependencies..."
+	$(RV_CXX) $(RV_FLAGS) tests/$(FILE).cpp $(LIB_SRCS) -o build/target/debug/$(FILE).elf
+	
+	@echo "\n=== Running under QEMU simulations ==="
+	@echo "=== VLEN=128 ===" && $(QEMU) -cpu rv64,v=true,vlen=128,elen=64 build/target/debug/$(FILE).elf
+	@echo "=== VLEN=256 ===" && $(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/$(FILE).elf
+	@echo "=== VLEN=512 ===" && $(QEMU) -cpu rv64,v=true,vlen=512,elen=64 build/target/debug/$(FILE).elf
 
 # Run the pipeline on QEMU at default VLEN
 run: canny_rv
@@ -89,9 +96,9 @@ run: canny_rv
 # Run at VLEN 128, 256, 512 to verify VLA correctness
 run_vlen: canny_rv
 	@for vlen in $(VLEN_VALUES); do \
-	    echo "=== VLEN=$$vlen ==="; \
-	    $(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 \
-	        build/target/release/canny_rv.elf; \
+		echo "=== VLEN=$$vlen ==="; \
+		$(QEMU) -cpu rv64,v=true,vlen=$$vlen,elen=64 \
+		    build/target/release/canny_rv.elf; \
 	done
 
 # Pattern rule — compile any test in tests/ to a RISC-V binary
@@ -101,7 +108,7 @@ build/target/debug/%.elf: tests/%.cpp $(LIB_SRCS)
 
 # Run any RISC-V test by name: make run-test NAME=rvv_sanity
 run-test: build/target/debug/$(NAME).elf
-	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 $
+	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/$(NAME).elf
 
 # -----------------------------------------------------------------------------
 # Utilities

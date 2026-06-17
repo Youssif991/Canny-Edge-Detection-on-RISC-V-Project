@@ -10,8 +10,8 @@
 int main()
 {
     Status stat;
-    const uint32_t width = 512;
-    const uint32_t height = 512;
+    const uint32_t width = 100;
+    const uint32_t height = 75;
     const size_t pixel_count = width * height;
     
     const size_t aligned_size_u8  = utils::memory::align_64(pixel_count * sizeof(uint8_t));
@@ -28,12 +28,12 @@ int main()
     img_gy.aligned_buffer_size = aligned_size_i16;
     img_gy.buffer.reset(static_cast<int16_t*>(utils::memory::aligned_alloc(64, aligned_size_i16)));
 
-    stat = image::io::load_raw<int16_t>("rect_gx.raw", img_gx);
+    stat = image::io::load_raw<int16_t>("rect_100x75_gx.raw", img_gx);
     if (Status::E_OK != stat) {
-        std::cerr << "Failed to load rect_gx.raw! Please run test_sobel first." << std::endl;
+        std::cerr << "Failed to load rect_100x75_gx.raw! Please run test_sobel first." << std::endl;
         return static_cast<int>(stat);
     }
-    stat = image::io::load_raw<int16_t>("rect_gy.raw", img_gy);
+    stat = image::io::load_raw<int16_t>("rect_100x75_gy.raw", img_gy);
     if (Status::E_OK != stat) return static_cast<int>(stat);
 
     // Setup Output Magnitude Structure (Grayscale uint8_t)
@@ -54,7 +54,7 @@ int main()
         std::cout << "Magnitude L1 Calculation Time: " << dur_l1.count() << " ms" << std::endl;
         
         // Save the L1 output image to check its look
-        image::io::save_raw<uint8_t>("rect_magnitude_l1.raw", img_mag);
+        image::io::save_raw<uint8_t>("rect_100x75_magnitude_l1.raw", img_mag);
     }
 
     // =========================================================================
@@ -69,7 +69,7 @@ int main()
         std::cout << "Magnitude L2 Calculation Time: " << dur_l2.count() << " ms" << std::endl;
         
         // Save the L2 output image
-        image::io::save_raw<uint8_t>("rect_magnitude_l2.raw", img_mag);
+        image::io::save_raw<uint8_t>("rect_100x75_magnitude_l2.raw", img_mag);
     }
 
     std::cout << "\nBoth tests completed successfully!" << std::endl;
