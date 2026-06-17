@@ -1,31 +1,76 @@
 Starting Benchmark...
 --------------------------
+Testing Flag: -O0, VLEN: 128
+Spatial Gaussian Blur Time: 39 ms
+Separable Gaussian Blur Time: 22 ms
+-rwxr-xr-x 1 mina_wael mina_wael 3.6M Jun 17 12:34 gaussian_-O0_128
+--------------------------
+Testing Flag: -O0, VLEN: 256
+Spatial Gaussian Blur Time: 34 ms
+Separable Gaussian Blur Time: 18 ms
+-rwxr-xr-x 1 mina_wael mina_wael 3.6M Jun 17 12:34 gaussian_-O0_256
+--------------------------
+Testing Flag: -O0, VLEN: 512
+Spatial Gaussian Blur Time: 36 ms
+Separable Gaussian Blur Time: 21 ms
+-rwxr-xr-x 1 mina_wael mina_wael 3.6M Jun 17 12:34 gaussian_-O0_512
+--------------------------
+Testing Flag: -O2, VLEN: 128
+Spatial Gaussian Blur Time: 14 ms
+Separable Gaussian Blur Time: 8 ms
+-rwxr-xr-x 1 mina_wael mina_wael 2.4M Jun 17 12:34 gaussian_-O2_128
+--------------------------
+Testing Flag: -O2, VLEN: 256
+Spatial Gaussian Blur Time: 13 ms
+Separable Gaussian Blur Time: 6 ms
+-rwxr-xr-x 1 mina_wael mina_wael 2.4M Jun 17 12:34 gaussian_-O2_256
+--------------------------
+Testing Flag: -O2, VLEN: 512
+Spatial Gaussian Blur Time: 15 ms
+Separable Gaussian Blur Time: 7 ms
+-rwxr-xr-x 1 mina_wael mina_wael 2.4M Jun 17 12:34 gaussian_-O2_512
+--------------------------
+Testing Flag: -O3, VLEN: 128
+Spatial Gaussian Blur Time: 11 ms
+Separable Gaussian Blur Time: 6 ms
+-rwxr-xr-x 1 mina_wael mina_wael 2.4M Jun 17 12:34 gaussian_-O3_128
+--------------------------
+Testing Flag: -O3, VLEN: 256
+Spatial Gaussian Blur Time: 12 ms
+Separable Gaussian Blur Time: 6 ms
+-rwxr-xr-x 1 mina_wael mina_wael 2.4M Jun 17 12:34 gaussian_-O3_256
+--------------------------
+Testing Flag: -O3, VLEN: 512
+Spatial Gaussian Blur Time: 11 ms
+Separable Gaussian Blur Time: 6 ms
+-rwxr-xr-x 1 mina_wael mina_wael 2.4M Jun 17 12:34 gaussian_-O3_512
+--------------------------
 Testing Flag: -Os, VLEN: 128
-Spatial Gaussian Blur Time: 21 ms
-Separable Gaussian Blur Time: 15 ms
--rwxr-xr-x 1 nader nader 3.0M Jun 17 12:17 gaussian_-Os_128
+Spatial Gaussian Blur Time: 14 ms
+Separable Gaussian Blur Time: 8 ms
+-rwxr-xr-x 1 mina_wael mina_wael 3.0M Jun 17 12:34 gaussian_-Os_128
 --------------------------
 Testing Flag: -Os, VLEN: 256
-Spatial Gaussian Blur Time: 21 ms
-Separable Gaussian Blur Time: 12 ms
--rwxr-xr-x 1 nader nader 3.0M Jun 17 12:17 gaussian_-Os_256
+Spatial Gaussian Blur Time: 16 ms
+Separable Gaussian Blur Time: 9 ms
+-rwxr-xr-x 1 mina_wael mina_wael 3.0M Jun 17 12:34 gaussian_-Os_256
 --------------------------
 Testing Flag: -Os, VLEN: 512
-Spatial Gaussian Blur Time: 49 ms
-Separable Gaussian Blur Time: 23 ms
--rwxr-xr-x 1 nader nader 3.0M Jun 17 12:17 gaussian_-Os_512
+Spatial Gaussian Blur Time: 15 ms
+Separable Gaussian Blur Time: 9 ms
+-rwxr-xr-x 1 mina_wael mina_wael 3.0M Jun 17 12:34 gaussian_-Os_512
 --------------------------
 Testing Flag: -Ofast, VLEN: 128
-Spatial Gaussian Blur Time: 19 ms
-Separable Gaussian Blur Time: 10 ms
--rwxr-xr-x 1 nader nader 2.4M Jun 17 12:17 gaussian_-Ofast_128
+Spatial Gaussian Blur Time: 10 ms
+Separable Gaussian Blur Time: 6 ms
+-rwxr-xr-x 1 mina_wael mina_wael 2.4M Jun 17 12:34 gaussian_-Ofast_128
 --------------------------
 Testing Flag: -Ofast, VLEN: 256
-Spatial Gaussian Blur Time: 17 ms
-Separable Gaussian Blur Time: 9 ms
--rwxr-xr-x 1 nader nader 2.4M Jun 17 12:17 gaussian_-Ofast_256
+Spatial Gaussian Blur Time: 11 ms
+Separable Gaussian Blur Time: 6 ms
+-rwxr-xr-x 1 mina_wael mina_wael 2.4M Jun 17 12:34 gaussian_-Ofast_256
 --------------------------
 Testing Flag: -Ofast, VLEN: 512
-Spatial Gaussian Blur Time: 19 ms
-Separable Gaussian Blur Time: 9 ms
--rwxr-xr-x 1 nader nader 2.4M Jun 17 12:17 gaussian_-Ofast_512
+Spatial Gaussian Blur Time: 11 ms
+Separable Gaussian Blur Time: 6 ms
+-rwxr-xr-x 1 mina_wael mina_wael 2.4M Jun 17 12:34 gaussian_-Ofast_512
