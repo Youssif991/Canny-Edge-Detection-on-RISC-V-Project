@@ -1,3 +1,8 @@
+/**
+ * @file unit_tests.cpp
+ * @brief Canny process full test on Googletest
+ */
+
 #include <gtest/gtest.h>
 #include <iostream>
 #include <cstdint>

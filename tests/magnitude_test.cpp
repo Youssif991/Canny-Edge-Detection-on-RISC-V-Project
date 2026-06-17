@@ -1,3 +1,8 @@
+/**
+ * @file magnitude_test.cpp
+ * @brief magnitude functionality test on QEMU
+ */
+
 #include <chrono>
 #include <iostream>
 #include <cstdlib>
@@ -42,9 +47,6 @@ int main()
     img_mag.aligned_buffer_size = aligned_size_u8;
     img_mag.buffer.reset(static_cast<uint8_t*>(utils::memory::aligned_alloc(64, aligned_size_u8)));
 
-    // =========================================================================
-    // 1. L1 NORM
-    // =========================================================================
     auto start_l1 = std::chrono::high_resolution_clock::now();
     stat = processing::MagL1<uint8_t, int16_t, uint16_t>(img_mag, img_gx.buffer.get(), img_gy.buffer.get());
     auto end_l1 = std::chrono::high_resolution_clock::now();
@@ -57,9 +59,6 @@ int main()
         image::io::save_raw<uint8_t>("rect_100x75_magnitude_l1.raw", img_mag);
     }
 
-    // =========================================================================
-    //  L2 NORM
-    // =========================================================================
     auto start_l2 = std::chrono::high_resolution_clock::now();
     stat = processing::MagL2<uint8_t, int16_t, float>(img_mag, img_gx.buffer.get(), img_gy.buffer.get());
     auto end_l2 = std::chrono::high_resolution_clock::now();

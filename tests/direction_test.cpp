@@ -1,3 +1,8 @@
+/**
+ * @file direction_test.cpp
+ * @brief direction functionality test on QEMU
+ */
+
 #include <chrono>
 #include <iostream>
 #include <cstdlib>
@@ -10,8 +15,8 @@
 int main()
 {
     Status stat;
-    const uint32_t width = 512;
-    const uint32_t height = 512;
+    const uint32_t width = 100;
+    const uint32_t height = 75;
     const size_t pixel_count = width * height;
     
     const size_t aligned_size_u8  = utils::memory::align_64(pixel_count * sizeof(uint8_t));
