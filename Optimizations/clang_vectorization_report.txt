@@ -1,0 +1,100 @@
+In file included from src/gaussian.cpp:6:
+In file included from include/gaussian.hpp:8:
+In file included from include/std_types.hpp:8:
+In file included from include/utils.hpp:11:
+In file included from /usr/bin/../lib/gcc-cross/riscv64-linux-gnu/13/../../../../riscv64-linux-gnu/include/c++/13/memory:69:
+In file included from /usr/bin/../lib/gcc-cross/riscv64-linux-gnu/13/../../../../riscv64-linux-gnu/include/c++/13/bits/stl_uninitialized.h:63:
+/usr/bin/../lib/gcc-cross/riscv64-linux-gnu/13/../../../../riscv64-linux-gnu/include/c++/13/bits/stl_algobase.h:437:6: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  437 |             __builtin_memmove(__result, __first, sizeof(_Tp) * _Num);
+      |             ^
+src/gaussian.cpp:55:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   55 |     for (int32_t r = 0; r < image_height; ++r)
+      |     ^
+src/gaussian.cpp:55:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+src/gaussian.cpp:55:5: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:55:5: remark: vectorized loop (vectorization width: vscale x 8, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:150:9: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+  150 |         for (int32_t col_index = 0; col_index < image_width; ++col_index)
+      |         ^
+src/gaussian.cpp:150:9: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:141:17: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+  141 |                 for (int32_t col_index = 0; col_index < image_width; ++col_index)
+      |                 ^
+src/gaussian.cpp:141:17: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:141:17: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:141:17: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:141:17: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:141:17: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:141:17: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:141:17: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:141:17: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:141:17: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+In file included from src/gaussian.cpp:6:
+In file included from include/gaussian.hpp:8:
+In file included from include/std_types.hpp:8:
+In file included from include/utils.hpp:11:
+In file included from /usr/bin/../lib/gcc-cross/riscv64-linux-gnu/13/../../../../riscv64-linux-gnu/include/c++/13/memory:69:
+In file included from /usr/bin/../lib/gcc-cross/riscv64-linux-gnu/13/../../../../riscv64-linux-gnu/include/c++/13/bits/stl_uninitialized.h:63:
+/usr/bin/../lib/gcc-cross/riscv64-linux-gnu/13/../../../../riscv64-linux-gnu/include/c++/13/bits/stl_algobase.h:437:6: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  437 |             __builtin_memmove(__result, __first, sizeof(_Tp) * _Num);
+      |             ^
+src/gaussian.cpp:55:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   55 |     for (int32_t r = 0; r < image_height; ++r)
+      |     ^
+src/gaussian.cpp:55:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+src/gaussian.cpp:55:5: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:55:5: remark: vectorized loop (vectorization width: vscale x 8, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:245:13: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+  245 |             for (int32_t col_index = 0; col_index < image_width; ++col_index)
+      |             ^
+src/gaussian.cpp:245:13: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:245:13: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:245:13: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:245:13: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:245:13: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:245:13: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:245:13: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:245:13: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:245:13: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:272:9: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+  272 |         for (int32_t col_index = 0; col_index < image_width; ++col_index)
+      |         ^
+src/gaussian.cpp:272:9: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:264:13: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+  264 |             for (int32_t col_index = 0; col_index < image_width; ++col_index)
+      |             ^
+src/gaussian.cpp:264:13: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:264:13: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:264:13: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:264:13: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:264:13: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:264:13: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:264:13: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/gaussian.cpp:264:13: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+src/gaussian.cpp:264:13: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/magnitude.cpp:44:9: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+   44 |         for (uint32_t i = 0; i < pixel_count; ++i)
+      |         ^
+src/magnitude.cpp:44:9: remark: vectorized loop (vectorization width: vscale x 8, interleaved count: 1) [-Rpass=loop-vectorize]
+src/magnitude.cpp:59:26: remark: loop not vectorized: cannot identify array bounds [-Rpass-analysis=loop-vectorize]
+   59 |             image.buffer.get()[i] = static_cast<PixelT>((magnitude_buffer[i] * 255) / max_magnitude);
+      |                          ^
+src/magnitude.cpp:57:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+   57 |         for (uint32_t i = 0; i < pixel_count; ++i)
+      |         ^
+src/magnitude.cpp:96:9: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-analysis=loop-vectorize]
+   96 |         for (uint32_t i = 0; i < pixel_count; ++i)
+      |         ^
+src/magnitude.cpp:96:9: remark: vectorized loop (vectorization width: vscale x 4, interleaved count: 1) [-Rpass=loop-vectorize]
+src/magnitude.cpp:111:26: remark: loop not vectorized: cannot identify array bounds [-Rpass-analysis=loop-vectorize]
+  111 |             image.buffer.get()[i] = static_cast<PixelT>((magnitude_buffer[i] * 255) / max_magnitude);
+      |                          ^
+src/magnitude.cpp:109:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+  109 |         for (uint32_t i = 0; i < pixel_count; ++i)
+      |         ^
+src/sobel.cpp:79:22: remark: loop not vectorized: cannot identify array bounds [-Rpass-analysis=loop-vectorize]
+   79 |                     (row_top[x_r] - row_top[x_l]) +
+      |                      ^
+src/sobel.cpp:71:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+   71 |             for (int32_t x = 0; x < W; ++x)
+      |             ^
