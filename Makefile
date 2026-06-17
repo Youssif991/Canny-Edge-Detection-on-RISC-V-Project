@@ -89,6 +89,18 @@ rvv_test:
 	@echo "=== VLEN=256 ===" && $(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/$(FILE).elf
 	@echo "=== VLEN=512 ===" && $(QEMU) -cpu rv64,v=true,vlen=512,elen=64 build/target/debug/$(FILE).elf
 
+# Run a specific QEMU test at a chosen VLEN: make rvv_test_vlen FILE=gaussian_test VLEN=256
+rvv_test_vlen:
+ifndef FILE
+	$(error Usage: make rvv_test_vlen FILE=<test_name> VLEN=<128|256|512>)
+endif
+ifndef VLEN
+	$(error Usage: make rvv_test_vlen FILE=<test_name> VLEN=<128|256|512>)
+endif
+	@mkdir -p build/target/debug
+	$(RV_CXX) $(RV_FLAGS) tests/$(FILE).cpp $(LIB_SRCS) -o build/target/debug/$(FILE).elf
+	@echo "=== Running under QEMU with VLEN=$(VLEN) ==="
+	$(QEMU) -cpu rv64,v=true,vlen=$(VLEN),elen=64 build/target/debug/$(FILE).elf
 # Run the pipeline on QEMU at default VLEN
 run: canny_rv
 	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/release/canny_rv.elf
