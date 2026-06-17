@@ -254,14 +254,14 @@ TEST(CannyDirection, EdgeAngles)
     auto gy = allocate_image<int16_t>(dim, dim);
     auto dir = allocate_image<uint8_t>(dim, dim);
 
-    gx.buffer.get()[0] = 255;
-    gy.buffer.get()[0] = 0;
+    std::memset(gx.buffer.get(), 0, gx.aligned_buffer_size);
+    std::memset(gy.buffer.get(), 0, gy.aligned_buffer_size);
+    std::memset(dir.buffer.get(), 0, dir.aligned_buffer_size);
 
-    gx.buffer.get()[1] = 0;
-    gy.buffer.get()[1] = 255;
+    gx.buffer.get()[0] = 255;  gy.buffer.get()[0] = 0;
+    gx.buffer.get()[1] = 0;    gy.buffer.get()[1] = 255;
+    gx.buffer.get()[2] = 255;  gy.buffer.get()[2] = 255;  
 
-    gx.buffer.get()[2] = 255;
-    gy.buffer.get()[2] = 255;
 
     Status stat = processing::Direction(dir, gx.buffer.get(), gy.buffer.get());
     EXPECT_EQ(stat, Status::E_OK);
