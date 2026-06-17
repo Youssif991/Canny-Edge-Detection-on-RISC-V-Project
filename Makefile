@@ -206,3 +206,5 @@ view_all:
 # Remove all build artifacts
 clean:
 	rm -rf build/
+
+
