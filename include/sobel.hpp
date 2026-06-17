@@ -17,4 +17,10 @@ namespace processing
         const image::io::metadata_t<PixelT> &input,
         OutputT *__restrict gx,
         OutputT *__restrict gy);
+
+    template <typename PixelT = uint8_t, typename OutputT = int16_t>
+    Status sobel_3x3_padded(
+        const image::io::metadata_t<PixelT> &input,
+        OutputT *__restrict gx,
+        OutputT *__restrict gy);
 }
