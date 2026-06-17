@@ -45,22 +45,23 @@ xdg-open docs/html/index.html   # Linux
 
 The scalar Gaussian blur kernel (both spatial 5×5 and separable implementations) was cross-compiled with five optimization levels and benchmarked on `qemu-riscv64` at VLEN 128/256/512 to establish a baseline before RVV intrinsic work begins.
 
-Optimization Flag |	VLEN |	Spatial Gaussian (ms) |	Separable Gaussian (ms) | Binary Size
--O0 | 128| 54| 28| 115K
--O0	|256 |	54 |	27 |	115K
--O0 |	512 |	53 |	28 |	115K
--O2 |	128 |	19 |	12 |	31K
--O2 |	256 |	19 |	10 |	31K
--O2 |	512 |	22 |	15 |	31K
--O3 |	128 |	16 |	12 |	30K
--O3 |	256 |	17 |	10 |	30K
--O3 |	512 |	16 |	11 |	30K
--Os |	128 |	22 |	13 |	26K
--Os |	256 |	21 |	14 |	26K
--Os |	512 |	20 |	12 |	26K
--Ofast |	128 |	16 |	33 |	30K
--Ofast |	256 |	16 |	33 |	30K
--Ofast |	512 |	16 |	33 |	30K
+| Optimization Flag | VLEN | Spatial Gaussian (ms) | Separable Gaussian (ms) | Binary Size |
+| :--- | :---: | :---: | :---: | :---: |
+| -O0 | 128 | 54 | 28 | 115K |
+| -O0 | 256 | 54 | 27 | 115K |
+| -O0 | 512 | 53 | 28 | 115K |
+| -O2 | 128 | 19 | 12 | 31K |
+| -O2 | 256 | 19 | 10 | 31K |
+| -O2 | 512 | 22 | 15 | 31K |
+| -O3 | 128 | 16 | 12 | 30K |
+| -O3 | 256 | 17 | 10 | 30K |
+| -O3 | 512 | 16 | 11 | 30K |
+| -Os | 128 | 22 | 13 | 26K |
+| -Os | 256 | 21 | 14 | 26K |
+| -Os | 512 | 20 | 12 | 26K |
+| -Ofast | 128 | 16 | 33 | 30K |
+| -Ofast | 256 | 16 | 33 | 30K |
+| -Ofast | 512 | 16 | 33 | 30K |
 
 **Observations:**
 - `-O0` is roughly 3× slower than any optimized flag and produces the largest binary — expected, since it disables nearly all compiler optimization passes.
