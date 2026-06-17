@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to automate Compiler Flags AND VLEN sweep
-FLAGS=("-Os" "-Ofast")
+FLAGS=("-O0" "-O2" "-O3" "-Os" "-Ofast") # added -O0 , -O2 and -O3 to the flags list
 VLENS=(128 256 512)
 OUTPUT_FILE="Optimizations/optimization_results.txt"
 
