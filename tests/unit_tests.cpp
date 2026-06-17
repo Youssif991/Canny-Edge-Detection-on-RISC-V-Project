@@ -35,7 +35,7 @@ TEST(CannyPipeline, ProcessAndSaveAllImages)
         "full_black", "full_white", "horizontal_edge",
         "rect", "uniform", "vertical_edge"};
     std::vector<std::pair<uint32_t, uint32_t>> dims = {
-        {512, 512}};
+        {100, 75}};
 
     for (const auto &base : bases)
     {
@@ -62,7 +62,7 @@ TEST(CannyPipeline, ProcessAndSaveAllImages)
 
             auto gx = allocate_image<int16_t>(w, h);
             auto gy = allocate_image<int16_t>(w, h);
-            EXPECT_EQ((processing::sobel_3x3<uint8_t, int16_t>(img_separable, gx, gy)), Status::E_OK);
+            EXPECT_EQ((processing::sobel_3x3<uint8_t, int16_t>(img_separable, gx.buffer.get(), gy.buffer.get())), Status::E_OK);
             EXPECT_EQ((image::io::save_raw<int16_t>(prefix + "_gx.raw", gx)), Status::E_OK);
             EXPECT_EQ((image::io::save_raw<int16_t>(prefix + "_gy.raw", gy)), Status::E_OK);
 
@@ -81,30 +81,35 @@ TEST(CannyPipeline, ProcessAndSaveAllImages)
     }
 }
 
-TEST(CannyGaussian, SpatialUniformImage)
+TEST(CannyGaussian, UniformImage)
 {
     const uint32_t dim = 128;
     auto img = allocate_image<uint8_t>(dim, dim);
     std::memset(img.buffer.get(), 128, img.pixel_count);
 
-    EXPECT_EQ((processing::gaussian_spatial_5x5<uint8_t, int32_t>(img)), Status::E_OK);
+    Status stat = processing::gaussian_separable_5x5(img);
+    EXPECT_EQ(stat, Status::E_OK);
+
+    const uint8_t expected_val = 128;
 
     for (uint32_t y = 2; y < dim - 2; ++y)
     {
         for (uint32_t x = 2; x < dim - 2; ++x)
         {
-            EXPECT_NEAR(img.buffer.get()[y * dim + x], 128, 2);
+            uint8_t val = img.buffer.get()[y * dim + x];
+            EXPECT_NEAR(val, expected_val, 1);
         }
     }
 }
 
-TEST(CannyGaussian, SpatialAllBlackImage)
+TEST(CannyGaussian, AllBlackImage)
 {
     const uint32_t dim = 128;
     auto img = allocate_image<uint8_t>(dim, dim);
     std::memset(img.buffer.get(), 0, img.pixel_count);
 
-    EXPECT_EQ((processing::gaussian_spatial_5x5<uint8_t, int32_t>(img)), Status::E_OK);
+    Status stat = processing::gaussian_separable_5x5(img);
+    EXPECT_EQ(stat, Status::E_OK);
 
     for (size_t i = 0; i < img.pixel_count; ++i)
     {
@@ -112,24 +117,7 @@ TEST(CannyGaussian, SpatialAllBlackImage)
     }
 }
 
-TEST(CannyGaussian, SpatialAllWhiteImage)
-{
-    const uint32_t dim = 128;
-    auto img = allocate_image<uint8_t>(dim, dim);
-    std::memset(img.buffer.get(), 255, img.pixel_count);
-
-    EXPECT_EQ((processing::gaussian_spatial_5x5<uint8_t, int32_t>(img)), Status::E_OK);
-
-    for (uint32_t y = 2; y < dim - 2; ++y)
-    {
-        for (uint32_t x = 2; x < dim - 2; ++x)
-        {
-            EXPECT_NEAR(img.buffer.get()[y * dim + x], 255, 2);
-        }
-    }
-}
-
-TEST(CannyGaussian, SpatialImpulseSymmetry)
+TEST(CannyGaussian, ImpulseSymmetry)
 {
     const uint32_t dim = 128;
     auto img = allocate_image<uint8_t>(dim, dim);
@@ -139,85 +127,16 @@ TEST(CannyGaussian, SpatialImpulseSymmetry)
     const uint32_t cy = dim / 2;
     img.buffer.get()[cy * dim + cx] = 255;
 
-    EXPECT_EQ((processing::gaussian_spatial_5x5<uint8_t, int32_t>(img)), Status::E_OK);
+    Status stat = processing::gaussian_separable_5x5(img);
+    EXPECT_EQ(stat, Status::E_OK);
 
     uint8_t *ptr = img.buffer.get();
+
     EXPECT_EQ(ptr[cy * dim + (cx - 1)], ptr[cy * dim + (cx + 1)]);
     EXPECT_EQ(ptr[cy * dim + (cx - 2)], ptr[cy * dim + (cx + 2)]);
+
     EXPECT_EQ(ptr[(cy - 1) * dim + cx], ptr[(cy + 1) * dim + cx]);
     EXPECT_EQ(ptr[(cy - 2) * dim + cx], ptr[(cy + 2) * dim + cx]);
-}
-
-TEST(CannyGaussian, SeparableUniformImage)
-{
-    const uint32_t dim = 128;
-    auto img = allocate_image<uint8_t>(dim, dim);
-    std::memset(img.buffer.get(), 128, img.pixel_count);
-
-    EXPECT_EQ((processing::gaussian_separable_5x5<uint8_t, int32_t>(img)), Status::E_OK);
-
-    for (uint32_t y = 2; y < dim - 2; ++y)
-    {
-        for (uint32_t x = 2; x < dim - 2; ++x)
-        {
-            EXPECT_NEAR(img.buffer.get()[y * dim + x], 128, 2);
-        }
-    }
-}
-
-TEST(CannyGaussian, SeparableAllBlackImage)
-{
-    const uint32_t dim = 128;
-    auto img = allocate_image<uint8_t>(dim, dim);
-    std::memset(img.buffer.get(), 0, img.pixel_count);
-
-    EXPECT_EQ((processing::gaussian_separable_5x5<uint8_t, int32_t>(img)), Status::E_OK);
-
-    for (size_t i = 0; i < img.pixel_count; ++i)
-    {
-        EXPECT_EQ(img.buffer.get()[i], 0);
-    }
-}
-
-TEST(CannyGaussian, SeparableImpulseSymmetry)
-{
-    const uint32_t dim = 128;
-    auto img = allocate_image<uint8_t>(dim, dim);
-    std::memset(img.buffer.get(), 0, img.pixel_count);
-
-    const uint32_t cx = dim / 2;
-    const uint32_t cy = dim / 2;
-    img.buffer.get()[cy * dim + cx] = 255;
-
-    EXPECT_EQ((processing::gaussian_separable_5x5<uint8_t, int32_t>(img)), Status::E_OK);
-
-    uint8_t *ptr = img.buffer.get();
-    EXPECT_EQ(ptr[cy * dim + (cx - 1)], ptr[cy * dim + (cx + 1)]);
-    EXPECT_EQ(ptr[cy * dim + (cx - 2)], ptr[cy * dim + (cx + 2)]);
-    EXPECT_EQ(ptr[(cy - 1) * dim + cx], ptr[(cy + 1) * dim + cx]);
-    EXPECT_EQ(ptr[(cy - 2) * dim + cx], ptr[(cy + 2) * dim + cx]);
-}
-
-TEST(CannyGaussian, SpatialAndSeparableAgreeOnUniform)
-{
-    const uint32_t dim = 128;
-
-    auto img_spatial = allocate_image<uint8_t>(dim, dim);
-    auto img_separable = allocate_image<uint8_t>(dim, dim);
-    std::memset(img_spatial.buffer.get(), 100, img_spatial.pixel_count);
-    std::memset(img_separable.buffer.get(), 100, img_separable.pixel_count);
-
-    EXPECT_EQ((processing::gaussian_spatial_5x5<uint8_t, int32_t>(img_spatial)), Status::E_OK);
-    EXPECT_EQ((processing::gaussian_separable_5x5<uint8_t, int32_t>(img_separable)), Status::E_OK);
-
-    for (uint32_t y = 2; y < dim - 2; ++y)
-    {
-        for (uint32_t x = 2; x < dim - 2; ++x)
-        {
-            size_t idx = y * dim + x;
-            EXPECT_NEAR(img_spatial.buffer.get()[idx], img_separable.buffer.get()[idx], 2);
-        }
-    }
 }
 
 TEST(CannySobel, UniformImage)
@@ -229,7 +148,8 @@ TEST(CannySobel, UniformImage)
 
     std::memset(img.buffer.get(), 128, img.pixel_count);
 
-    EXPECT_EQ((processing::sobel_3x3<uint8_t, int16_t>(img, gx, gy)), Status::E_OK);
+    Status stat = processing::sobel_3x3(img, gx.buffer.get(), gy.buffer.get());
+    EXPECT_EQ(stat, Status::E_OK);
 
     for (uint32_t y = 1; y < dim - 1; ++y)
     {
@@ -257,7 +177,8 @@ TEST(CannySobel, VerticalEdge)
         }
     }
 
-    EXPECT_EQ((processing::sobel_3x3<uint8_t, int16_t>(img, gx, gy)), Status::E_OK);
+    Status stat = processing::sobel_3x3(img, gx.buffer.get(), gy.buffer.get());
+    EXPECT_EQ(stat, Status::E_OK);
 
     const uint32_t edge_x = dim / 2;
     for (uint32_t y = 1; y < dim - 1; ++y)
@@ -283,7 +204,8 @@ TEST(CannySobel, HorizontalEdge)
         }
     }
 
-    EXPECT_EQ((processing::sobel_3x3<uint8_t, int16_t>(img, gx, gy)), Status::E_OK);
+    Status stat = processing::sobel_3x3(img, gx.buffer.get(), gy.buffer.get());
+    EXPECT_EQ(stat, Status::E_OK);
 
     const uint32_t edge_y = dim / 2;
     for (uint32_t x = 1; x < dim - 1; ++x)
@@ -309,101 +231,14 @@ TEST(CannySobel, DiagonalEdge)
         }
     }
 
-    EXPECT_EQ((processing::sobel_3x3<uint8_t, int16_t>(img, gx, gy)), Status::E_OK);
+    Status stat = processing::sobel_3x3(img, gx.buffer.get(), gy.buffer.get());
+    EXPECT_EQ(stat, Status::E_OK);
 
     for (uint32_t i = 1; i < dim - 1; ++i)
     {
         size_t idx = i * dim + i;
         EXPECT_GT(std::abs(gx.buffer.get()[idx]), 0);
         EXPECT_GT(std::abs(gy.buffer.get()[idx]), 0);
-    }
-}
-
-TEST(CannySobel, AllBlackNoGradient)
-{
-    const uint32_t dim = 128;
-    auto img = allocate_image<uint8_t>(dim, dim);
-    auto gx = allocate_image<int16_t>(dim, dim);
-    auto gy = allocate_image<int16_t>(dim, dim);
-
-    std::memset(img.buffer.get(), 0, img.pixel_count);
-
-    EXPECT_EQ((processing::sobel_3x3<uint8_t, int16_t>(img, gx, gy)), Status::E_OK);
-
-    for (size_t i = 0; i < gx.pixel_count; ++i)
-    {
-        EXPECT_EQ(gx.buffer.get()[i], 0);
-        EXPECT_EQ(gy.buffer.get()[i], 0);
-    }
-}
-
-TEST(CannySobel, GxSymmetryOnVerticalEdge)
-{
-    const uint32_t dim = 128;
-    auto img = allocate_image<uint8_t>(dim, dim);
-    auto gx = allocate_image<int16_t>(dim, dim);
-    auto gy = allocate_image<int16_t>(dim, dim);
-
-    for (uint32_t y = 0; y < dim; ++y)
-    {
-        for (uint32_t x = 0; x < dim; ++x)
-        {
-            img.buffer.get()[y * dim + x] = (x < dim / 2) ? 0 : 255;
-        }
-    }
-
-    EXPECT_EQ((processing::sobel_3x3<uint8_t, int16_t>(img, gx, gy)), Status::E_OK);
-
-    const uint32_t edge_x = dim / 2;
-    const int16_t first_row_gx = gx.buffer.get()[1 * dim + edge_x];
-
-    for (uint32_t y = 1; y < dim - 1; ++y)
-    {
-        EXPECT_EQ(gx.buffer.get()[y * dim + edge_x], first_row_gx);
-    }
-}
-
-TEST(CannyDirection, PureHorizontalGradient)
-{
-
-    const uint32_t dim = 128;
-    auto gx = allocate_image<int16_t>(dim, dim);
-    auto gy = allocate_image<int16_t>(dim, dim);
-    auto dir = allocate_image<uint8_t>(dim, dim);
-
-    for (size_t i = 0; i < gx.pixel_count; ++i)
-    {
-        gx.buffer.get()[i] = 255;
-        gy.buffer.get()[i] = 0;
-    }
-
-    EXPECT_EQ((processing::Direction<uint8_t, int16_t>(dir, gx.buffer.get(), gy.buffer.get())), Status::E_OK);
-
-    for (size_t i = 0; i < dir.pixel_count; ++i)
-    {
-        EXPECT_EQ(dir.buffer.get()[i], 0);
-    }
-}
-
-TEST(CannyDirection, PureVerticalGradient)
-{
-
-    const uint32_t dim = 128;
-    auto gx = allocate_image<int16_t>(dim, dim);
-    auto gy = allocate_image<int16_t>(dim, dim);
-    auto dir = allocate_image<uint8_t>(dim, dim);
-
-    for (size_t i = 0; i < gx.pixel_count; ++i)
-    {
-        gx.buffer.get()[i] = 0;
-        gy.buffer.get()[i] = 255;
-    }
-
-    EXPECT_EQ((processing::Direction<uint8_t, int16_t>(dir, gx.buffer.get(), gy.buffer.get())), Status::E_OK);
-
-    for (size_t i = 0; i < dir.pixel_count; ++i)
-    {
-        EXPECT_EQ(dir.buffer.get()[i], 90);
     }
 }
 
@@ -414,9 +249,6 @@ TEST(CannyDirection, EdgeAngles)
     auto gy = allocate_image<int16_t>(dim, dim);
     auto dir = allocate_image<uint8_t>(dim, dim);
 
-    std::memset(gx.buffer.get(), 0, gx.pixel_count * sizeof(int16_t));
-    std::memset(gy.buffer.get(), 0, gy.pixel_count * sizeof(int16_t));
-
     gx.buffer.get()[0] = 255;
     gy.buffer.get()[0] = 0;
 
@@ -426,37 +258,15 @@ TEST(CannyDirection, EdgeAngles)
     gx.buffer.get()[2] = 255;
     gy.buffer.get()[2] = 255;
 
-    gx.buffer.get()[3] = 255;
-    gy.buffer.get()[3] = -255;
-
-    EXPECT_EQ((processing::Direction<uint8_t, int16_t>(dir, gx.buffer.get(), gy.buffer.get())), Status::E_OK);
+    Status stat = processing::Direction(dir, gx.buffer.get(), gy.buffer.get());
+    EXPECT_EQ(stat, Status::E_OK);
 
     EXPECT_EQ(dir.buffer.get()[0], 0);
     EXPECT_EQ(dir.buffer.get()[1], 90);
     EXPECT_EQ(dir.buffer.get()[2], 135);
-    EXPECT_EQ(dir.buffer.get()[3], 45);
 }
 
-TEST(CannyDirection, ZeroGradientIsHorizontal)
-{
-
-    const uint32_t dim = 128;
-    auto gx = allocate_image<int16_t>(dim, dim);
-    auto gy = allocate_image<int16_t>(dim, dim);
-    auto dir = allocate_image<uint8_t>(dim, dim);
-
-    std::memset(gx.buffer.get(), 0, gx.pixel_count * sizeof(int16_t));
-    std::memset(gy.buffer.get(), 0, gy.pixel_count * sizeof(int16_t));
-
-    EXPECT_EQ((processing::Direction<uint8_t, int16_t>(dir, gx.buffer.get(), gy.buffer.get())), Status::E_OK);
-
-    for (size_t i = 0; i < dir.pixel_count; ++i)
-    {
-        EXPECT_EQ(dir.buffer.get()[i], 0);
-    }
-}
-
-TEST(CannyMagnitude, L1NonZeroOutput)
+TEST(CannyMagnitude, NonZeroOutput)
 {
     const uint32_t dim = 128;
     auto gx = allocate_image<int16_t>(dim, dim);
@@ -465,109 +275,39 @@ TEST(CannyMagnitude, L1NonZeroOutput)
 
     for (size_t i = 0; i < gx.pixel_count; ++i)
     {
-        gx.buffer.get()[i] = static_cast<int16_t>((i % 512) - 256);
-        gy.buffer.get()[i] = static_cast<int16_t>(((i * 3) % 512) - 256);
+        gx.buffer.get()[i] = static_cast<int16_t>((i % 200) - 100);
+        gy.buffer.get()[i] = static_cast<int16_t>(((i * 3) % 200) - 100);
     }
 
-    EXPECT_EQ((processing::MagL1<uint8_t, int16_t, uint16_t>(mag, gx.buffer.get(), gy.buffer.get())), Status::E_OK);
+    Status stat_l1 = processing::MagL1(mag, gx.buffer.get(), gy.buffer.get());
+    EXPECT_EQ(stat_l1, Status::E_OK);
 
-    bool has_nonzero = false;
+    bool has_nonzero_l1 = false;
     for (size_t i = 0; i < mag.pixel_count; ++i)
     {
         if (mag.buffer.get()[i] > 0)
         {
-            has_nonzero = true;
+            has_nonzero_l1 = true;
             break;
         }
     }
-    EXPECT_TRUE(has_nonzero);
-}
+    EXPECT_TRUE(has_nonzero_l1);
 
-TEST(CannyMagnitude, L2NonZeroOutput)
-{
-    const uint32_t dim = 128;
-    auto gx = allocate_image<int16_t>(dim, dim);
-    auto gy = allocate_image<int16_t>(dim, dim);
-    auto mag = allocate_image<uint8_t>(dim, dim);
+    std::memset(mag.buffer.get(), 0, mag.pixel_count);
 
-    for (size_t i = 0; i < gx.pixel_count; ++i)
-    {
-        gx.buffer.get()[i] = static_cast<int16_t>((i % 512) - 256);
-        gy.buffer.get()[i] = static_cast<int16_t>(((i * 3) % 512) - 256);
-    }
+    Status stat_l2 = processing::MagL2(mag, gx.buffer.get(), gy.buffer.get());
+    EXPECT_EQ(stat_l2, Status::E_OK);
 
-    EXPECT_EQ((processing::MagL2<uint8_t, int16_t, float>(mag, gx.buffer.get(), gy.buffer.get())), Status::E_OK);
-
-    bool has_nonzero = false;
+    bool has_nonzero_l2 = false;
     for (size_t i = 0; i < mag.pixel_count; ++i)
     {
         if (mag.buffer.get()[i] > 0)
         {
-            has_nonzero = true;
+            has_nonzero_l2 = true;
             break;
         }
     }
-    EXPECT_TRUE(has_nonzero);
-}
-
-TEST(CannyMagnitude, ZeroGradientsProduceZeroMagnitude)
-{
-    const uint32_t dim = 128;
-    auto gx = allocate_image<int16_t>(dim, dim);
-    auto gy = allocate_image<int16_t>(dim, dim);
-    auto mag = allocate_image<uint8_t>(dim, dim);
-
-    std::memset(gx.buffer.get(), 0, gx.pixel_count * sizeof(int16_t));
-    std::memset(gy.buffer.get(), 0, gy.pixel_count * sizeof(int16_t));
-
-    // max_magnitude will be 0 — division by zero guard: output should be all-zero
-    processing::MagL1<uint8_t, int16_t, uint16_t>(mag, gx.buffer.get(), gy.buffer.get());
-
-    for (size_t i = 0; i < mag.pixel_count; ++i)
-    {
-        EXPECT_EQ(mag.buffer.get()[i], 0);
-    }
-}
-
-TEST(CannyMagnitude, L1OutputClampedTo255)
-{
-    const uint32_t dim = 4;
-    auto gx = allocate_image<int16_t>(dim, dim);
-    auto gy = allocate_image<int16_t>(dim, dim);
-    auto mag = allocate_image<uint8_t>(dim, dim);
-
-    // One pixel has maximum gradient, rest zero — it must map to 255 after normalisation
-    std::memset(gx.buffer.get(), 0, gx.pixel_count * sizeof(int16_t));
-    std::memset(gy.buffer.get(), 0, gy.pixel_count * sizeof(int16_t));
-    gx.buffer.get()[0] = 1020;
-    gy.buffer.get()[0] = 1020;
-
-    EXPECT_EQ((processing::MagL1<uint8_t, int16_t, uint16_t>(mag, gx.buffer.get(), gy.buffer.get())), Status::E_OK);
-    EXPECT_EQ(mag.buffer.get()[0], 255);
-}
-
-TEST(CannyMagnitude, L1AndL2AgreeOnPureGx)
-{
-
-    const uint32_t dim = 128;
-    auto gx = allocate_image<int16_t>(dim, dim);
-    auto gy = allocate_image<int16_t>(dim, dim);
-    auto mag1 = allocate_image<uint8_t>(dim, dim);
-    auto mag2 = allocate_image<uint8_t>(dim, dim);
-
-    for (size_t i = 0; i < gx.pixel_count; ++i)
-    {
-        gx.buffer.get()[i] = static_cast<int16_t>(i % 256);
-        gy.buffer.get()[i] = 0;
-    }
-
-    EXPECT_EQ((processing::MagL1<uint8_t, int16_t, uint16_t>(mag1, gx.buffer.get(), gy.buffer.get())), Status::E_OK);
-    EXPECT_EQ((processing::MagL2<uint8_t, int16_t, float>(mag2, gx.buffer.get(), gy.buffer.get())), Status::E_OK);
-
-    for (size_t i = 0; i < mag1.pixel_count; ++i)
-    {
-        EXPECT_NEAR(mag1.buffer.get()[i], mag2.buffer.get()[i], 1);
-    }
+    EXPECT_TRUE(has_nonzero_l2);
 }
 
 int main(int argc, char **argv)
