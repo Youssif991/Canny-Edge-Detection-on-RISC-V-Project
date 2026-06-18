@@ -16,7 +16,9 @@
 
 /* ── CHANGE THESE TO CONFIGURE THE RUN ──────────────────────────
  *
- *  LMUL_SWEEP   : RVV LMUL factor  (1 | 2 | 4) - maps to acc2, acc4, acc8
+ *  LMUL_SWEEP   : RVV LMUL factor  (1 | 2 | 4)
+ *                 NOTE: Gaussian only supports LMUL 1 and 2.
+ *                       LMUL 4 is supported for Magnitude only.
  *
  *  PIPELINE_SEL : which stage to benchmark
  *      0 → Gaussian spatial only
@@ -29,8 +31,8 @@
  *      bench-rvv-O3     →  -march=rv64gcv  (__riscv defined)
  *
  * ────────────────────────────────────────────────────────────── */
-#define LMUL_SWEEP  4
-#define PIPELINE_SEL 0
+#define LMUL_SWEEP   2
+#define PIPELINE_SEL 3
 
 /* ── Timing helper ───────────────────────────────────────────── */
 using Clock = std::chrono::high_resolution_clock;
@@ -46,8 +48,20 @@ static double elapsed_ms(Clock::time_point s, Clock::time_point e)
         auto t0 = Clock::now();                                   \
         { code; }                                                 \
         auto t1 = Clock::now();                                   \
-        printf("%-24s %.3f ms\n", label, elapsed_ms(t0, t1));     \
+        printf("%-24s %.3f ms\n", label, elapsed_ms(t0, t1));    \
     }
+
+/* ── Gaussian dispatch — only LMUL 1 and 2 exist ────────────── */
+#define GAUSSIAN_RVV(img)                                         \
+    do {                                                          \
+        _Pragma("GCC diagnostic push")                            \
+        _Pragma("GCC diagnostic ignored \"-Wunreachable-code\"")  \
+        if constexpr (LMUL_SWEEP == 1)                            \
+            (void)processing::gaussian_spatial_5x5_rvv_lmul1(img); \
+        else                                                      \
+            (void)processing::gaussian_spatial_5x5_rvv_lmul2(img); \
+        _Pragma("GCC diagnostic pop")                             \
+    } while(0)
 
 /* ── Allocate a fresh metadata copy of an image ─────────────── */
 static image::io::metadata_t<uint8_t> make_copy(const image::io::metadata_t<uint8_t>& src)
@@ -64,21 +78,19 @@ static image::io::metadata_t<uint8_t> make_copy(const image::io::metadata_t<uint
 
 int main()
 {
-    // Generate dummy image data instead of load_raw to ensure QEMU test always runs without missing file errors
     constexpr uint32_t WIDTH  = 512;
     constexpr uint32_t HEIGHT = 512;
     const size_t n = WIDTH * HEIGHT;
 
     image::io::metadata_t<uint8_t> image;
-    image.width  = WIDTH;
-    image.height = HEIGHT;
-    image.pixel_count = n;
+    image.width               = WIDTH;
+    image.height              = HEIGHT;
+    image.pixel_count         = n;
     image.aligned_buffer_size = n;
     image.buffer.reset(static_cast<uint8_t*>(utils::memory::aligned_alloc(64, n)));
 
-    for (size_t i = 0; i < n; ++i) {
-        image.buffer[i] = static_cast<uint8_t>((i % 256));
-    }
+    for (size_t i = 0; i < n; ++i)
+        image.buffer[i] = static_cast<uint8_t>(i % 256);
 
     /* ── Allocate Sobel gradient buffers ─────────────────────── */
     auto* gx = static_cast<int16_t*>(utils::memory::aligned_alloc(64, n * sizeof(int16_t)));
@@ -99,20 +111,14 @@ int main()
     {
         auto blurred = make_copy(image);
         std::copy_n(image.buffer.get(), n, blurred.buffer.get());
-        
+
 #if defined(__riscv)
-    #if LMUL_SWEEP == 1
-        (void)processing::gaussian_spatial_5x5_rvv_lmul1(blurred);
-    #elif LMUL_SWEEP == 2
-        (void)processing::gaussian_spatial_5x5_rvv_lmul2(blurred);
-    #elif LMUL_SWEEP == 4
-        (void)processing::gaussian_spatial_5x5_rvv_lmul4(blurred);
-    #endif
+        GAUSSIAN_RVV(blurred);
 #else
         (void)processing::gaussian_spatial_5x5<uint8_t, int32_t>(blurred);
 #endif
 
-        /* Pre-compute gx/gy for magnitude/direction stages */
+        /* Pre-compute gx/gy for magnitude stage */
 #if PIPELINE_SEL == 3
         (void)processing::sobel_3x3<uint8_t, int16_t>(blurred, gx, gy);
 #endif
@@ -130,15 +136,21 @@ int main()
             auto mag = make_copy(image);
             BENCH("Magnitude L1",
 #if defined(__riscv)
-                (void)processing::MagL1_rvv(mag, gx, gy);
+    #if LMUL_SWEEP == 1
+                (void)processing::MagL1<1>(mag, gx, gy);
+    #elif LMUL_SWEEP == 2
+                (void)processing::MagL1<2>(mag, gx, gy);
+    #elif LMUL_SWEEP == 4
+                (void)processing::MagL1<4>(mag, gx, gy);
+    #endif
 #else
-                (void)processing::MagL1<uint8_t, int16_t, uint16_t>(mag, gx, gy);
+                (void)processing::MagL1<2>(mag, gx, gy);
 #endif
             )
         }
 #endif
     }
-#endif /* stages 2-5 */
+#endif /* stages 2-3-6 */
 
     /* ── Stage 0: Gaussian spatial only ──────────────────────── */
 #if PIPELINE_SEL == 0
@@ -147,13 +159,7 @@ int main()
         BENCH("Gaussian spatial",
             std::copy_n(image.buffer.get(), n, img_copy.buffer.get());
 #if defined(__riscv)
-    #if LMUL_SWEEP == 1
-            (void)processing::gaussian_spatial_5x5_rvv_lmul1(img_copy);
-    #elif LMUL_SWEEP == 2
-            (void)processing::gaussian_spatial_5x5_rvv_lmul2(img_copy);
-    #elif LMUL_SWEEP == 4
-            (void)processing::gaussian_spatial_5x5_rvv_lmul4(img_copy);
-    #endif
+            GAUSSIAN_RVV(img_copy);
 #else
             (void)processing::gaussian_spatial_5x5<uint8_t, int32_t>(img_copy);
 #endif
@@ -170,19 +176,19 @@ int main()
         BENCH("Full pipeline",
             std::copy_n(image.buffer.get(), n, blurred.buffer.get());
 #if defined(__riscv)
-    #if LMUL_SWEEP == 1
-            (void)processing::gaussian_spatial_5x5_rvv_lmul1(blurred);
-    #elif LMUL_SWEEP == 2
-            (void)processing::gaussian_spatial_5x5_rvv_lmul2(blurred);
-    #elif LMUL_SWEEP == 4
-            (void)processing::gaussian_spatial_5x5_rvv_lmul4(blurred);
-    #endif
+            GAUSSIAN_RVV(blurred);
             (void)processing::sobel_3x3<uint8_t, int16_t>(blurred, gx, gy);
-            (void)processing::MagL1_rvv(mag, gx, gy);
+    #if LMUL_SWEEP == 1
+            (void)processing::MagL1<1>(mag, gx, gy);
+    #elif LMUL_SWEEP == 2
+            (void)processing::MagL1<2>(mag, gx, gy);
+    #elif LMUL_SWEEP == 4
+            (void)processing::MagL1<4>(mag, gx, gy);
+    #endif
 #else
             (void)processing::gaussian_spatial_5x5<uint8_t, int32_t>(blurred);
             (void)processing::sobel_3x3<uint8_t, int16_t>(blurred, gx, gy);
-            (void)processing::MagL1<uint8_t, int16_t, uint16_t>(mag, gx, gy);
+            (void)processing::MagL1<2>(mag, gx, gy);
 #endif
         )
     }
