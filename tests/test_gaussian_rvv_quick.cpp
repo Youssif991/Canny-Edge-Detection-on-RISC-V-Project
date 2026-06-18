@@ -35,8 +35,8 @@ int main()
     std::cout << "Running scalar..." << std::endl;
     processing::gaussian_spatial_5x5<uint8_t, int32_t>(img_scalar);
 
-    std::cout << "Running RVV..." << std::endl;
-    processing::gaussian_spatial_5x5_rvv(img_rvv);
+    std::cout << "Running RVV (acc4)..." << std::endl;
+    processing::gaussian_spatial_5x5_rvv_acc4(img_rvv);
 
     std::cout << "Comparing results..." << std::endl;
     int mismatches = 0;
