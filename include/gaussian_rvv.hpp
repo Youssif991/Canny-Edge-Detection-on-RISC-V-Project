@@ -16,8 +16,8 @@ namespace processing
  * @param   input_image  The input image metadata.
  * @return  Status indicating success or failure.
  */
-Status gaussian_spatial_5x5_rvv_acc2(image::io::metadata_t<uint8_t>& input_image);
-Status gaussian_spatial_5x5_rvv_acc4(image::io::metadata_t<uint8_t>& input_image);
-Status gaussian_spatial_5x5_rvv_acc8(image::io::metadata_t<uint8_t>& input_image);
+Status gaussian_spatial_5x5_rvv_lmul1(image::io::metadata_t<uint8_t>& input_image);
+Status gaussian_spatial_5x5_rvv_lmul2(image::io::metadata_t<uint8_t>& input_image);
+Status gaussian_spatial_5x5_rvv_lmul4(image::io::metadata_t<uint8_t>& input_image);
 
 } // namespace processing
