@@ -1,179 +1,188 @@
-# Amdahl's Law Analysis — Canny Edge Detection Pipeline (`-O3`)
-**Configuration: `-O3` | `VLEN=512`**
+# Compiler Optimization Analysis: -O0 vs -O3 (VLEN = 512)
+
+## 1. Benchmark Results
+
+| Stage        | -O0 (ms) | -O0 %  | -O3 (ms) | -O3 %  | Speedup S |
+|--------------|----------|--------|----------|--------|-----------|
+| Gaussian     | 0.539    | 11.96% | 0.163    | 50.42% | 3.31×     |
+| Sobel Gx/Gy  | 1.119    | 24.82% | 0.064    | 19.79% | 17.48×    |
+| Magnitude    | 2.021    | 44.84% | 0.045    | 14.06% | 44.91×    |
+| Direction    | 0.828    | 18.38% | 0.051    | 15.72% | 16.24×    |
+| **Total**    | **4.507**| 100%   | **0.323**| 100%   | **13.95×**|
 
 ---
 
-## 1. Profiling Baseline
+## 2. Amdahl's Law Analysis
 
-The following profiling breakdown was measured on the **`-O3`** binary running under QEMU with `VLEN=512`:
+### 2.1 Formula & What p Means Here
 
-| Stage        | Time (ms) | Percentage |
-|--------------|-----------|------------|
-| Gaussian     | 0.163     | 50.42%     |
-| Sobel Gx/Gy  | 0.064     | 19.79%     |
-| Magnitude    | 0.045     | 14.06%     |
-| Direction    | 0.051     | 15.72%     |
-| **Total**    | **0.323** | **100%**   |
+Amdahl's Law for a single vectorized code running with VLEN = N:
 
----
-
-## 2. Comparison: `-O0` vs `-O3`
-
-| Stage        | `-O0` (ms) | `-O0` % | `-O3` (ms) | `-O3` % | Stage Speedup |
-|--------------|------------|---------|------------|---------|---------------|
-| Gaussian     | 0.539      | 11.96%  | 0.163      | 50.42%  | **3.3×**      |
-| Sobel Gx/Gy  | 1.119      | 24.82%  | 0.064      | 19.79%  | **17.5×**     |
-| Magnitude    | 2.021      | 44.84%  | 0.045      | 14.06%  | **44.9×**     |
-| Direction    | 0.828      | 18.38%  | 0.051      | 15.72%  | **16.2×**     |
-| **Total**    | **4.507**  | 100%    | **0.323**  | 100%    | **~13.9×**    |
-
-
-
----
-
-## 3. Amdahl's Law — Background
-
-Amdahl's Law gives the theoretical maximum speedup when only a fraction `p` of a program is accelerated:
-
-$$
-S = \frac{1}{(1 - p) + \frac{p}{s}}
-$$
+$$S = \frac{1}{(1 - p) + \frac{p}{N}}$$
 
 Where:
-- `S` = overall speedup of the whole pipeline
-- `p` = fraction of total execution time accelerated (measured from **`-O0`** baseline)
-- `s` = speedup factor applied to that fraction
-- `(1 - p)` = unchanged fraction (the hard ceiling)
+- **S** = measured speedup of that stage = T_O0 / T_O3
+- **N** = 512 (vector length, i.e. how many data elements processed in parallel per cycle)
+- **p** = the fraction of the stage's code that is **fully vectorizable** (parallelizable by SIMD)
+- **(1 - p)** = the serial fraction that the compiler cannot vectorize (loop overhead, branches, memory latency, scalar tail loops, etc.)
+
+Each stage is **part of one single program**. Each has its own measured speedup, and from that we solve for its own **p** — the degree to which the compiler successfully vectorized it using VLEN=512.
 
 ---
 
-## 4. Validating the Total Speedup via Amdahl's Law
+### 2.2 Solving for p Per Stage
 
-Using actual per-stage speedups from `-O0` → `-O3`:
+Rearranging Amdahl's formula to isolate p:
 
-$$
-S_{total} = \frac{1}{\frac{0.1196}{3.3} + \frac{0.2482}{17.5} + \frac{0.4484}{44.9} + \frac{0.1838}{16.2}}
-$$
+$$S \left[(1-p) + \frac{p}{N}\right] = 1$$
 
-$$
-= \frac{1}{0.0362 + 0.0142 + 0.0100 + 0.0113} = \frac{1}{0.0717} \approx \mathbf{13.9×}
-$$
+$$S - Sp + \frac{Sp}{N} = 1$$
 
-This matches the measured 13.9× total speedup exactly — confirming the profiling data is internally consistent.
+$$p \left(\frac{S}{N} - S\right) = 1 - S$$
 
----
+$$\boxed{p = \frac{1 - S}{S\left(\frac{1}{N} - 1\right)}}$$
 
-## 5. The Bottleneck Inversion
-
-The most striking result is how the percentage distribution **completely inverted** from `-O0` to `-O3`:
-
-| Stage        | `-O0` % | `-O3` % | Shift          |
-|--------------|---------|---------|----------------|
-| Gaussian     | 11.96%  | 50.42%  | ↑ **+38.46%**  |
-| Sobel Gx/Gy  | 24.82%  | 19.79%  | ↓ −5.03%       |
-| Magnitude    | **44.84%** | 14.06% | ↓ **−30.78%** |
-| Direction    | 18.38%  | 15.72%  | ↓ −2.66%       |
-
-This is Amdahl's Law in action:
-
-- **Magnitude** was the `-O0` bottleneck (44.84%) and got the largest compiler speedup (44.9×), shrinking to just 14.06% of `-O3` runtime.
-- **Gaussian** was the cheapest `-O0` stage (11.96%) but got the weakest compiler speedup (3.3×), becoming the **new dominant bottleneck** at 50.42% of `-O3` runtime.
-- The bottleneck has **fully inverted** — the cheapest stage is now the most expensive.
-
-**Why did Gaussian benefit least from `-O3`?**
-The 5×5 convolution with boundary checks has complex control flow that prevents the compiler from auto-vectorizing the inner loop. `-O3` helps with register allocation and instruction scheduling, but cannot vectorize a loop it can't prove is safe. This is exactly why manual RVV intrinsics are needed for Gaussian specifically.
+Applying this with **N = 512** for each stage:
 
 ---
 
-## 6. Per-Stage Analysis (Further Optimization Potential from `-O3`)
+#### Gaussian Blur — S = 3.3067×
 
-### 6.1 Gaussian Blur (`p = 0.1196` at `-O0`, now 50.42% of `-O3` runtime)
+$$p_{Gaussian} = \frac{1 - 3.3067}{3.3067 \times \left(\frac{1}{512} - 1\right)} = \frac{-2.3067}{3.3067 \times (-0.998)} \approx \boxed{0.699}$$
 
-Gaussian is now the **dominant bottleneck** at `-O3`. Its 3.3× speedup from the compiler was the weakest, indicating the most room for manual RVV optimization.
-
-| RVV speedup `s` on Gaussian | Additional Overall Speedup (on top of `-O3`) |
-|-----------------------------|----------------------------------------------|
-| 2×                          | 1.34×                                        |
-| 4×                          | 1.50×                                        |
-| 8×                          | 1.58×                                        |
-| ∞                           | **2.02×**                                    |
-
-**Implication:** Gaussian is the **top priority for RVV intrinsics**. A separable 1×5 + 5×1 decomposition and strip-mined multiply-accumulate could realistically achieve 4–8× on top of `-O3`.
+→ Only **69.9%** of Gaussian is vectorizable. The remaining 30.1% is serial (boundary handling, 2D kernel loops with data dependencies).  
+→ This explains the modest speedup of **3.31×** despite N=512.
 
 ---
 
-### 6.2 Sobel Gx/Gy (`p = 0.2482` at `-O0`, now 19.79% of `-O3` runtime)
+#### Sobel Gx/Gy — S = 17.4844×
 
-Sobel received a strong 17.5× compiler speedup. Its further ceiling is modest.
+$$p_{Sobel} = \frac{1 - 17.484}{17.484 \times \left(\frac{1}{512} - 1\right)} \approx \boxed{0.9447}$$
 
-| RVV speedup `s` on Sobel | Additional Overall Speedup |
-|--------------------------|---------------------------|
-| 2×                       | 1.11×                     |
-| 4×                       | 1.17×                     |
-| ∞                        | **1.25×**                 |
-
-**Implication:** Second priority for RVV after Gaussian, but returns are limited.
+→ **94.47%** of Sobel is vectorizable. Straightforward convolution with no data dependencies across pixels.  
+→ Good speedup of **17.48×**.
 
 ---
 
-### 6.3 Direction (`p = 0.1838` at `-O0`, now 15.72% of `-O3` runtime)
+#### Magnitude — S = 44.9111×
 
-Direction received a 16.2× compiler speedup and is branch-heavy. Further gains are limited.
+$$p_{Magnitude} = \frac{1 - 44.911}{44.911 \times \left(\frac{1}{512} - 1\right)} \approx \boxed{0.9796}$$
 
-| RVV speedup `s` on Direction | Additional Overall Speedup |
-|------------------------------|---------------------------|
-| 2×                           | 1.09×                     |
-| ∞                            | **1.19×**                 |
-
-**Implication:** Not worth manual RVV effort. Leave scalar.
+→ **97.96%** vectorizable — the highest of all stages. Pure arithmetic: `sqrt(Gx² + Gy²)` with no branching or inter-pixel dependency. The compiler vectorized it almost perfectly.  
+→ Highest speedup at **44.91×**, very close to the theoretical limit of 512.
 
 ---
 
-### 6.4 Magnitude (`p = 0.4484` at `-O0`, now 14.06% of `-O3` runtime)
+#### Direction — S = 16.2353×
 
-Magnitude was already the big winner at `-O3` (44.9× speedup). Its further ceiling is small.
+$$p_{Direction} = \frac{1 - 16.235}{16.235 \times \left(\frac{1}{512} - 1\right)} \approx \boxed{0.9402}$$
 
-| RVV speedup `s` on Magnitude | Additional Overall Speedup |
-|------------------------------|---------------------------|
-| 2×                           | 1.08×                     |
-| ∞                            | **1.16×**                 |
-
-**Implication:** The compiler already handled this well. No further action needed.
+→ **94.02%** vectorizable. `atan2(Gy, Gx)` is mostly parallelizable but the transcendental function introduces some scalar overhead.  
+→ Speedup of **16.24×**.
 
 ---
 
-## 7. Optimization Priority Ranking (from `-O3` toward RVV)
+### 2.3 Summary Table
 
-| Priority | Stage       | `-O3` % | Compiler Speedup | RVV Potential | Recommended Action              |
-|----------|-------------|---------|------------------|---------------|---------------------------------|
-| 1 ✅     | Gaussian    | 50.42%  | 3.3× (weakest)   | High          | Separable filter + RVV intrinsics |
-| 2 ⚠️    | Sobel       | 19.79%  | 17.5×            | Low (1.25×)   | RVV if time allows              |
-| 3 ❌     | Direction   | 15.72%  | 16.2×            | Very low      | Leave scalar                    |
-| 4 ❌     | Magnitude   | 14.06%  | 44.9× (best)     | Minimal       | Already optimal                 |
+| Stage        |   S (measured) |       p (vectorized fraction) | Serial fraction (1-p) | Theoretical max S (p→1) |
+|--------------|---------------:|------------------------------:|----------------------:|------------------------:|
+| Gaussian     |         3.31×  |                   **0.6990**  |              **30.1%**|                  512×   |
+| Sobel Gx/Gy  |        17.48×  |                   **0.9447**  |               **5.5%**|                  512×   |
+| Magnitude    |        44.91×  |                   **0.9796**  |               **2.0%**|                  512×   |
+| Direction    |        16.24×  |                   **0.9402**  |               **5.9%**|                  512×   |
+| **Total**    |    **13.95×**  |               **0.9302**      |           **6.98%**   |               **512×**  |
 
----
-
-## 8. QEMU Measurement Disclaimer
-
-> ⚠️ QEMU is **not cycle-accurate**. All measurements are wall-clock time via `clock_gettime(CLOCK_MONOTONIC)`, averaged over 100+ iterations.
->
-> At sub-millisecond `-O3` runtimes (total: 0.323 ms), **timer resolution and QEMU scheduling noise** are significant. The percentage breakdown is more reliable than absolute values at this scale. Increase the benchmark loop to 1000+ iterations and report mean ± standard deviation for stable results.
->
-> The 13.9× total speedup from `-O0` → `-O3` reflects a real reduction in emulated instruction count, but does not directly predict speedup on physical RISC-V silicon.
+The theoretical maximum speedup for any stage (if p = 1.0) would be **512×**. The gap between actual and theoretical speedup is entirely explained by the serial fraction **(1 - p)**.
 
 ---
 
-## 9. Summary
+### 2.4 Bottleneck Shift (Amdahl Effect)
 
-| Key Metric                                      | Value                        |
-|-------------------------------------------------|------------------------------|
-| Total `-O0` runtime                             | 4.507 ms                     |
-| Total `-O3` runtime                             | 0.323 ms                     |
-| Total compiler speedup (`-O0` → `-O3`)          | **~13.9×**                   |
-| Strongest compiler speedup (per stage)          | Magnitude **44.9×**          |
-| Weakest compiler speedup (per stage)            | Gaussian **3.3×**            |
-| New bottleneck at `-O3`                         | Gaussian (50.42% of runtime) |
-| Max further gain (Gaussian RVV, ∞×)             | **~2.02× additional**        |
-| Next step                                       | RVV intrinsics on Gaussian   |
+After -O3 optimization, the **bottleneck changed completely**:
 
-The compiler alone delivered **13.9× speedup** from `-O0` to `-O3` — primarily by optimizing Magnitude (44.9×) and Sobel (17.5×). The bottleneck has fully inverted: Gaussian is now the weak link. All RVV optimization effort should focus there first.
+| Stage       | -O0 share (bottleneck before) | -O3 share (bottleneck after) |
+|-------------|-------------------------------|------------------------------|
+| Gaussian    | 11.96%                        | **50.42%** ← new bottleneck  |
+| Sobel Gx/Gy | 24.82%                        | 19.79%                       |
+| Magnitude   | **44.84%** ← old bottleneck   | 14.06%                       |
+| Direction   | 18.38%                        | 15.72%                       |
+
+Magnitude was the worst stage in -O0 but achieved p = 0.98 and nearly fully utilized VLEN=512. Gaussian had the lowest p = 0.699, so it was barely sped up and is now consuming half the runtime. **Gaussian is the critical path.**
+
+
+---
+
+## 3.1 Gaussian — Increasing p (current p = 0.699)
+
+Gaussian is the **critical bottleneck** (50.42% of -O3 runtime) and has the most serial code (30.1%). It also has the **largest weight room** for improvement — every point of p gained here has the highest leverage on total speedup.
+
+| p_new | $S_{Gaussian}$ | $S_{total}$ | Gain over current -O3 |
+|-------|---------------|-------------|----------------------|
+| 0.75  | 3.98×         | 15.25×      | **+1.093×**          |
+| 0.80  | 4.96×         | 16.78×      | **+1.202×**          |
+| 0.85  | 6.59×         | 18.64×      | **+1.336×**          |
+| 0.90  | 9.83×         | 20.98×      | **+1.503×**          |
+| 0.95  | 19.28×        | 23.98×      | **+1.719×**          |
+| 0.99  | 83.80×        | 27.08×      | **+1.941×**          |
+| 1.00  | 512.00×       | 27.98×      | **+2.006×**          |
+
+**Key insight:** Even pushing Gaussian to p = 1.00 (perfect vectorization) only yields **2.006× additional gain** over current -O3. This is the **hard ceiling** Amdahl's Law sets for Gaussian alone — because it only contributes 11.96% of total -O0 time, no matter how fast it becomes, the other stages still dominate.
+
+The jump from p = 0.95 → 0.99 is large in stage speedup (19× → 84×) but small in total gain (1.719× → 1.941×) — clear evidence of diminishing returns as Gaussian's share shrinks.
+
+---
+
+## 3.2 Sobel Gx/Gy — Increasing p (current p = 0.9447)
+
+Sobel is already well-vectorized. Its remaining serial fraction is only 5.5%, so the improvement ceiling is modest.
+
+| p_new | $S_{Sobel}$ | $S_{total}$ | Gain over current -O3 |
+|-------|------------|-------------|----------------------|
+| 0.95  | 19.28×     | 14.22×      | **+1.019×**          |
+| 0.99  | 83.80×     | 16.55×      | **+1.186×**          |
+| 1.00  | 512.00×    | 17.26×      | **+1.237×**          |
+
+**Key insight:** Perfect vectorization of Sobel (p → 1.0) gives only **1.237× additional gain**. Despite Sobel having the second-largest weight (24.82% of -O0 time), its p is already high, so the marginal return is low. Not a priority for RVV effort.
+
+---
+
+## 3.3 Magnitude — Increasing p (current p = 0.9796)
+
+Magnitude is already near-perfect. Only 2% serial remains — very little room left.
+
+| p_new | $S_{Magnitude}$ | $S_{total}$ | Gain over current -O3 |
+|-------|----------------|-------------|----------------------|
+| 0.99  | 83.80×         | 14.92×      | **+1.069×**          |
+| 1.00  | 512.00×        | 15.99×      | **+1.146×**          |
+
+**Key insight:** Even achieving p = 1.00 on Magnitude — which already had the best compiler speedup (44.91×) — adds only **1.146× total gain**. Despite being the heaviest stage by -O0 weight (44.84%), it is already so fast that further improvement is almost irrelevant to total time.
+
+> This is Amdahl's Law at its most striking: the stage with the **most work** contributes the **least further gain** once it has been well-optimized.
+
+---
+
+## 3.4 Direction — Increasing p (current p = 0.9402)
+
+Direction has a 5.9% serial fraction — slightly higher than Sobel — but also the smallest -O0 weight (18.38%).
+
+| p_new | $S_{Direction}$ | $S_{total}$ | Gain over current -O3 |
+|-------|----------------|-------------|----------------------|
+| 0.95  | 19.28×         | 14.31×      | **+1.026×**          |
+| 0.99  | 83.80×         | 15.99×      | **+1.146×**          |
+| 1.00  | 512.00×        | 16.47×      | **+1.180×**          |
+
+**Key insight:** Direction's ceiling is **1.180×** additional gain at p = 1.00. Similar story to Sobel — already reasonably vectorized, low serial fraction, and relatively small weight. Not worth manual RVV effort.
+
+---
+
+
+## 4. Further Optimization Potential
+
+| Stage       | p       |  -o3%    | RVV OPT.  Needed       |
+|-------------|---------|----------|------------------------|
+| Gaussian    | 0.699   |  50.42%  | 🔴 Level 1 — Critical |
+| Sobel Gx/Gy | 0.945   |  19.79%  | 🟠 Level 2 — Optional |
+| Direction   | 0.940   |  15.72%  | 🟡 Level 3 — Skip     |
+| Magnitude   | 0.980   |  14.06%  | 🟢 Level 4 — Not needed|
+
+The compiler with -O3 VLEN=512 achieved **13.95× total speedup**, which is strong but far below the theoretical 512×. The serial fractions — especially Gaussian's 30.1% — are the fundamental limiters per Amdahl's Law. Eliminating them via algorithm restructuring (separable filter, stage fusion) is the highest-return next step.
