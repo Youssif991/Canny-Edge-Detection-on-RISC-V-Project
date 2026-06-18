@@ -20,4 +20,7 @@ Status gaussian_spatial_5x5_rvv_lmul1(image::io::metadata_t<uint8_t>& input_imag
 Status gaussian_spatial_5x5_rvv_lmul2(image::io::metadata_t<uint8_t>& input_image);
 Status gaussian_spatial_5x5_rvv_lmul4(image::io::metadata_t<uint8_t>& input_image);
 
+// Default wrapper that uses the optimal LMUL=2 (Accumulator=8) variant
+Status gaussian_spatial_5x5_rvv(image::io::metadata_t<uint8_t>& input_image);
+
 } // namespace processing
