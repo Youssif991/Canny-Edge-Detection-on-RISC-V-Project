@@ -70,6 +70,12 @@ if __name__ == "__main__":
         elif file_size == 524288:         # Sobel Output size (512x512 int16_t)
             default_w, default_h = 512, 512
             is_16bit = True
+        elif file_size == 409600:         # 640x640 Image size (uint8)
+            default_w, default_h = 640, 640
+            is_16bit = False
+        elif file_size == 819200:         # 640x640 Output size (int16_t)
+            default_w, default_h = 640, 640
+            is_16bit = True
         elif file_size == 1920000:        # 1200x1600 Image size (uint8)
             default_w, default_h = 1200, 1600
             is_16bit = False
