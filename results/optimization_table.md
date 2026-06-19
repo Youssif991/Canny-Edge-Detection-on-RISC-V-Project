@@ -2,10 +2,10 @@
 
 | Stage        | -O0      | -O2      | -O3      | Auto-vec | RVV 128  | RVV 256  |
 |--------------|----------|----------|----------|----------|----------|----------|
-| Gaussian 5x5 | 52.696 ms| 17.979 ms| 14.685 ms| 14.617 ms| 32.828 ms| 26.643 ms|
-| Sobel Gx/Gy  | 84.337 ms| 2.624 ms | 2.763 ms | 2.679 ms | 5.812 ms | 5.111 ms |
-| Magnitude    | 54.682 ms| 1.209 ms | 1.226 ms | 1.218 ms | 5.349 ms | 4.504 ms |
-| Direction    | 52.698 ms| 2.160 ms | 2.078 ms | 2.072 ms | scalar   | scalar   |
+| Gaussian 5x5 | 58.612 ms| 19.864 ms| 16.226 ms| 17.470 ms| 44.737 ms| 37.093 ms|
+| Sobel Gx/Gy  | 72.005 ms| 3.157 ms | 3.133 ms | 3.227 ms | 6.732 ms | 6.322 ms |
+| Magnitude    | 194.658ms| 4.524 ms | 5.534 ms | 4.222 ms | 5.789 ms | 4.226 ms |
+| Direction    | 61.867 ms| 2.015 ms | 2.112 ms | 2.316 ms | scalar   | scalar   |
 | Binary size  | 710738 B  | 637622 B  | 640270 B  | 640270  B  |  640334  B  |  640334 B  |
 
 **Notes:**
