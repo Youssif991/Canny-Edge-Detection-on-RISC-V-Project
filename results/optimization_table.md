@@ -6,7 +6,7 @@
 | Sobel Gx/Gy  | 84.337 ms| 2.624 ms | 2.763 ms | 2.679 ms | 5.812 ms | 5.111 ms |
 | Magnitude    | 54.682 ms| 1.209 ms | 1.226 ms | 1.218 ms | 5.349 ms | 4.504 ms |
 | Direction    | 52.698 ms| 2.160 ms | 2.078 ms | 2.072 ms | scalar   | scalar   |
-| Binary size  | 694 KB   | 623 KB   | 626 KB   | 626 KB   | 625 KB   | 625 KB   |
+| Binary size  | 710738 B  | 637622 B  | 640270 B  | 640270  B  |  640334  B  |  640334 B  |
 
 **Notes:**
 - `-O0` / `-O2` / `-O3` / `Auto-vec` columns are the **scalar** kernel
