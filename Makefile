@@ -41,27 +41,50 @@ canny_rv: $(SRCS)
 # Phase 4 Benchmarks
 # -----------------------------------------------------------------------------
 
+BENCH_DRIVER := tests/final_test.cpp
+
 bench_O0:
 	@mkdir -p build/target/release
-	$(RV_CXX) -std=gnu++23 -march=rv64gcv -mabi=lp64d -O0 -static -Iinclude $(SRCS) -o build/target/release/bench_O0.elf
-	@echo "Built bench_O0"
+	$(RV_CXX) -DFORCE_SCALAR -std=gnu++23 -march=rv64gcv -mabi=lp64d -O0 -static -Iinclude $(BENCH_DRIVER) $(LIB_SRCS) -o build/target/release/bench_O0.elf
+	@echo "Built bench_O0 (scalar forced, -O0)"
 
 bench_O2:
 	@mkdir -p build/target/release
-	$(RV_CXX) -std=gnu++23 -march=rv64gcv -mabi=lp64d -O2 -static -Iinclude $(SRCS) -o build/target/release/bench_O2.elf
-	@echo "Built bench_O2"
+	$(RV_CXX) -DFORCE_SCALAR -std=gnu++23 -march=rv64gcv -mabi=lp64d -O2 -static -Iinclude $(BENCH_DRIVER) $(LIB_SRCS) -o build/target/release/bench_O2.elf
+	@echo "Built bench_O2 (scalar forced, -O2)"
 
 bench_O3:
 	@mkdir -p build/target/release
-	$(RV_CXX) -std=gnu++23 -march=rv64gcv -mabi=lp64d -O3 -static -Iinclude $(SRCS) -o build/target/release/bench_O3.elf
-	@echo "Built bench_O3"
+	$(RV_CXX) -DFORCE_SCALAR -std=gnu++23 -march=rv64gcv -mabi=lp64d -O3 -static -Iinclude $(BENCH_DRIVER) $(LIB_SRCS) -o build/target/release/bench_O3.elf
+	@echo "Built bench_O3 (scalar forced, -O3)"
 
 bench_O3vec:
 	@mkdir -p build/target/release
-	$(RV_CXX) -std=gnu++23 -march=rv64gcv -mabi=lp64d -O3 -ftree-vectorize -fopt-info-vec-all -static -Iinclude $(SRCS) -o build/target/release/bench_O3vec.elf 2> build/target/release/vec_report.txt
-	@echo "Built bench_O3vec. Vectorization report saved to build/target/release/vec_report.txt"
+	$(RV_CXX) -DFORCE_SCALAR -std=gnu++23 -march=rv64gcv -mabi=lp64d -O3 -ftree-vectorize -fopt-info-vec-all -static -Iinclude $(BENCH_DRIVER) $(LIB_SRCS) -o build/target/release/bench_O3vec.elf 2> build/target/release/vec_report.txt
+	@echo "Built bench_O3vec (scalar forced, -O3 -ftree-vectorize). Vectorization report saved to build/target/release/vec_report.txt"
 
-bench_sweep: bench_O0 bench_O2 bench_O3 bench_O3vec
+bench_rvv:
+	@mkdir -p build/target/release
+	$(RV_CXX) -std=gnu++23 -march=rv64gcv -mabi=lp64d -O3 -static -Iinclude $(BENCH_DRIVER) $(LIB_SRCS) -o build/target/release/bench_rvv.elf
+	@echo "Built bench_rvv (RVV intrinsics path, -O3). Same .elf is used for BOTH the RVV 128 and RVV 256 table columns — only the QEMU -cpu vlen= run flag differs at execution time, the binary itself is identical."
+
+bench_sweep: bench_O0 bench_O2 bench_O3 bench_O3vec bench_rvv
+
+# Report .text/.data/.bss size for every bench binary (use THIS for the
+# "Binary size" row of the table — .text isolates code-generation
+# differences from the constant statically-linked libc/libstdc++ bulk).
+bench_size: bench_sweep
+	@echo "\n========================================================"
+	@echo "=== Binary Sizes (text / data / bss / dec / hex)     ==="
+	@echo "========================================================"
+	@for f in bench_O0 bench_O2 bench_O3 bench_O3vec bench_rvv; do \
+		echo "--- $$f ---"; \
+		riscv64-unknown-elf-size build/target/release/$$f.elf; \
+	done
+	@echo "\nNOTE: bench_rvv's size is the SAME binary for both the"
+	@echo "RVV 128 and RVV 256 table columns — VLEN is a QEMU runtime"
+	@echo "flag (-cpu ...,vlen=N), not a compile-time one, so there is"
+	@echo "only one RVV size to measure, not two."
 
 run_bench: bench_sweep
 	@echo "\n========================================================"
@@ -71,17 +94,22 @@ run_bench: bench_sweep
 	riscv64-unknown-elf-size build/target/release/bench_O2.elf
 	riscv64-unknown-elf-size build/target/release/bench_O3.elf
 	riscv64-unknown-elf-size build/target/release/bench_O3vec.elf
+	riscv64-unknown-elf-size build/target/release/bench_rvv.elf
 	@echo "\n========================================================"
 	@echo "=== Step 6: QEMU Execution                           ==="
 	@echo "========================================================"
-	@echo "\n--- Running -O0 ---"
+	@echo "\n--- Running -O0 (scalar) ---"
 	$(QEMU) -cpu rv64,v=true,vlen=128 build/target/release/bench_O0.elf
-	@echo "\n--- Running -O2 ---"
+	@echo "\n--- Running -O2 (scalar) ---"
 	$(QEMU) -cpu rv64,v=true,vlen=128 build/target/release/bench_O2.elf
-	@echo "\n--- Running -O3 ---"
+	@echo "\n--- Running -O3 (scalar) ---"
 	$(QEMU) -cpu rv64,v=true,vlen=128 build/target/release/bench_O3.elf
-	@echo "\n--- Running -O3 with Auto-vectorization ---"
+	@echo "\n--- Running -O3 with Auto-vectorization (scalar src, autovec) ---"
 	$(QEMU) -cpu rv64,v=true,vlen=128 build/target/release/bench_O3vec.elf
+	@echo "\n--- Running RVV intrinsics @ VLEN=128 ---"
+	$(QEMU) -cpu rv64,v=true,vlen=128,elen=64 build/target/release/bench_rvv.elf
+	@echo "\n--- Running RVV intrinsics @ VLEN=256 ---"
+	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/release/bench_rvv.elf
 
 # -----------------------------------------------------------------------------
 # Host tests
@@ -133,7 +161,6 @@ rvv_test:
 	@echo "\n=== Running under QEMU simulations ==="
 	@echo "=== VLEN=128 ===" && $(QEMU) -cpu rv64,v=true,vlen=128,elen=64 build/target/debug/$(FILE).elf
 	@echo "=== VLEN=256 ===" && $(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/$(FILE).elf
-	@echo "=== VLEN=512 ===" && $(QEMU) -cpu rv64,v=true,vlen=512,elen=64 build/target/debug/$(FILE).elf
 
 # Run a specific QEMU test at a chosen VLEN: make rvv_test_vlen FILE=gaussian_test VLEN=256
 rvv_test_vlen:
@@ -206,5 +233,3 @@ view_all:
 # Remove all build artifacts
 clean:
 	rm -rf build/
-
-

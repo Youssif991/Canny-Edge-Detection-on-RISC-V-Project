@@ -29,12 +29,26 @@
  *      Magnitude → LMUL 4
  *      Direction → scalar (not yet vectorized)
  *
- *  Scalar vs RVV is controlled by the Makefile -march flag:
- *      bench-scalar-O3  →  -march=rv64gc   (__riscv undefined)
- *      bench-rvv-O3     →  -march=rv64gcv  (__riscv defined)
+ *  Scalar vs RVV path selection (independent of build target!):
+ *      -DFORCE_SCALAR   → always call the scalar implementations,
+ *                          even when cross-compiled for RISC-V.
+ *                          Used for the -O0/-O2/-O3/Auto-vec columns
+ *                          so those measure the SAME code path, with
+ *                          only the optimization flags changing.
+ *      (no define)      → falls back to __riscv: RVV intrinsics path
+ *                          when cross-compiled, scalar on host.
+ *                          Used for the RVV 128 / RVV 256 columns.
  *
  * ────────────────────────────────────────────────────────────── */
 #define PIPELINE_SEL 6
+
+#if defined(FORCE_SCALAR)
+  #define USE_RVV 0
+#elif defined(__riscv)
+  #define USE_RVV 1
+#else
+  #define USE_RVV 0
+#endif
 
 /* ── Timing helper ───────────────────────────────────────────── */
 using Clock = std::chrono::high_resolution_clock;
@@ -68,11 +82,13 @@ static image::io::metadata_t<uint8_t> make_copy(const image::io::metadata_t<uint
 
 /* ── Shared pre-computation helpers ──────────────────────────── */
 
-// Blur the image in-place (RVV or scalar depending on -march)
+// Blur the image in-place (RVV or scalar depending on USE_RVV)
 static void do_gaussian(image::io::metadata_t<uint8_t>& img)
 {
-#if defined(__riscv)
+#if USE_RVV
     (void)processing::gaussian_spatial_5x5_rvv_lmul2(img);
+#else
+    (void)processing::gaussian_spatial_5x5<uint8_t, int32_t>(img);
 #endif
 }
 
@@ -80,8 +96,10 @@ static void do_gaussian(image::io::metadata_t<uint8_t>& img)
 static void do_sobel(const image::io::metadata_t<uint8_t>& img,
                      int16_t* gx, int16_t* gy)
 {
-#if defined(__riscv)
+#if USE_RVV
     (void)processing::sobel_3x3_rvv<2>(img, gx, gy);
+#else
+    (void)processing::sobel_3x3<uint8_t, int16_t>(img, gx, gy);
 #endif
 }
 
@@ -89,8 +107,10 @@ static void do_sobel(const image::io::metadata_t<uint8_t>& img,
 static void do_magnitude(image::io::metadata_t<uint8_t>& mag,
                          const int16_t* gx, const int16_t* gy)
 {
-#if defined(__riscv)
+#if USE_RVV
     (void)processing::MagL1<4>(mag, gx, gy);
+#else
+    (void)processing::MagL1<uint8_t, int16_t, uint16_t>(mag, gx, gy);
 #endif
 }
 
@@ -125,10 +145,10 @@ int main()
     if (!gx || !gy) { printf("ERROR: alloc failed\n"); return 1; }
 
     printf("--- Benchmark (%s) ---\n",
-#if defined(__riscv)
+#if USE_RVV
            "RVV: Gaussian=LMUL2  Sobel=LMUL2  Magnitude=LMUL4  Direction=scalar"
 #else
-           "Scalar"
+           "Scalar (forced)"
 #endif
     );
 
