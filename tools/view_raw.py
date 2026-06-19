@@ -61,7 +61,7 @@ if __name__ == "__main__":
         if file_size == 7500:             # Old test size (100x75 uint8)
             default_w, default_h = 100, 75
             is_16bit = False
-        elif file_size == 15000:            # New signed 16-bit size (100x75 int16_t = 15000 bytes)
+        elif file_size == 15000:          # New signed 16-bit size (100x75 int16_t = 15000 bytes)
             default_w, default_h = 100, 75
             is_16bit = True
         elif file_size == 262144:         # Input Image size (512x512 uint8)
@@ -69,6 +69,30 @@ if __name__ == "__main__":
             is_16bit = False
         elif file_size == 524288:         # Sobel Output size (512x512 int16_t)
             default_w, default_h = 512, 512
+            is_16bit = True
+        elif file_size == 409600:         # 640x640 Image size (uint8)
+            default_w, default_h = 640, 640
+            is_16bit = False
+        elif file_size == 819200:         # 640x640 Output size (int16_t)
+            default_w, default_h = 640, 640
+            is_16bit = True
+        elif file_size == 456843:         # 591x773 Image size (uint8)
+            default_w, default_h = 591, 773
+            is_16bit = False
+        elif file_size == 913686:         # 591x773 Output size (int16_t)
+            default_w, default_h = 591, 773
+            is_16bit = True
+        elif file_size == 1920000:        # 1200x1600 Image size (uint8)
+            default_w, default_h = 1200, 1600
+            is_16bit = False
+        elif file_size == 3840000:        # 1200x1600 Output size (int16_t)
+            default_w, default_h = 1200, 1600
+            is_16bit = True
+        elif file_size == 2073600:        # 1080p Image size (1920x1080 uint8)
+            default_w, default_h = 1920, 1080
+            is_16bit = False
+        elif file_size == 4147200:        # 1080p Output size (1920x1080 int16_t)
+            default_w, default_h = 1920, 1080
             is_16bit = True
 
     try:
