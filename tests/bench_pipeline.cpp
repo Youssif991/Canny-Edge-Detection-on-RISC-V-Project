@@ -1,6 +1,7 @@
 #include "gaussian.hpp"
 #include "gaussian_rvv.hpp"
 #include "sobel.hpp"
+#include "sobel_rvv.hpp"
 #include "magnitude.hpp"
 #include "magnitude_rvv.hpp"
 #include "std_types.hpp"
@@ -18,7 +19,7 @@
  *
  *  LMUL_SWEEP   : RVV LMUL factor  (1 | 2 | 4)
  *                 NOTE: Gaussian only supports LMUL 1 and 2.
- *                       LMUL 4 is supported for Magnitude only.
+ *                       Sobel and Magnitude support LMUL 1, 2, and 4.
  *
  *  PIPELINE_SEL : which stage to benchmark
  *      0 → Gaussian spatial only
@@ -31,8 +32,8 @@
  *      bench-rvv-O3     →  -march=rv64gcv  (__riscv defined)
  *
  * ────────────────────────────────────────────────────────────── */
-#define LMUL_SWEEP   2
-#define PIPELINE_SEL 3
+#define LMUL_SWEEP   4
+#define PIPELINE_SEL 2
 
 /* ── Timing helper ───────────────────────────────────────────── */
 using Clock = std::chrono::high_resolution_clock;
@@ -52,15 +53,43 @@ static double elapsed_ms(Clock::time_point s, Clock::time_point e)
     }
 
 /* ── Gaussian dispatch — only LMUL 1 and 2 exist ────────────── */
-#define GAUSSIAN_RVV(img)                                         \
-    do {                                                          \
-        _Pragma("GCC diagnostic push")                            \
-        _Pragma("GCC diagnostic ignored \"-Wunreachable-code\"")  \
-        if constexpr (LMUL_SWEEP == 1)                            \
-            (void)processing::gaussian_spatial_5x5_rvv_lmul1(img); \
-        else                                                      \
-            (void)processing::gaussian_spatial_5x5_rvv_lmul2(img); \
-        _Pragma("GCC diagnostic pop")                             \
+#define GAUSSIAN_RVV(img)                                             \
+    do {                                                              \
+        _Pragma("GCC diagnostic push")                                \
+        _Pragma("GCC diagnostic ignored \"-Wunreachable-code\"")      \
+        if constexpr (LMUL_SWEEP == 1)                                \
+            (void)processing::gaussian_spatial_5x5_rvv_lmul1(img);   \
+        else                                                          \
+            (void)processing::gaussian_spatial_5x5_rvv_lmul2(img);   \
+        _Pragma("GCC diagnostic pop")                                 \
+    } while(0)
+
+/* ── Sobel dispatch — LMUL 1, 2, and 4 all supported ────────── */
+#define SOBEL_RVV(img, gx, gy)                                        \
+    do {                                                              \
+        _Pragma("GCC diagnostic push")                                \
+        _Pragma("GCC diagnostic ignored \"-Wunreachable-code\"")      \
+        if constexpr (LMUL_SWEEP == 1)                                \
+            (void)processing::sobel_3x3_rvv<1>(img, gx, gy);         \
+        else if constexpr (LMUL_SWEEP == 2)                           \
+            (void)processing::sobel_3x3_rvv<2>(img, gx, gy);         \
+        else                                                          \
+            (void)processing::sobel_3x3_rvv<4>(img, gx, gy);         \
+        _Pragma("GCC diagnostic pop")                                 \
+    } while(0)
+
+/* ── Magnitude dispatch — LMUL 1, 2, and 4 all supported ─────── */
+#define MAGL1_RVV(img, gx, gy)                                        \
+    do {                                                              \
+        _Pragma("GCC diagnostic push")                                \
+        _Pragma("GCC diagnostic ignored \"-Wunreachable-code\"")      \
+        if constexpr (LMUL_SWEEP == 1)                                \
+            (void)processing::MagL1<1>(img, gx, gy);                  \
+        else if constexpr (LMUL_SWEEP == 2)                           \
+            (void)processing::MagL1<2>(img, gx, gy);                  \
+        else                                                          \
+            (void)processing::MagL1<4>(img, gx, gy);                  \
+        _Pragma("GCC diagnostic pop")                                 \
     } while(0)
 
 /* ── Allocate a fresh metadata copy of an image ─────────────── */
@@ -120,13 +149,21 @@ int main()
 
         /* Pre-compute gx/gy for magnitude stage */
 #if PIPELINE_SEL == 3
+#if defined(__riscv)
+        SOBEL_RVV(blurred, gx, gy);
+#else
         (void)processing::sobel_3x3<uint8_t, int16_t>(blurred, gx, gy);
+#endif
 #endif
 
         /* ── Stage 2: Sobel only ─────────────────────────────── */
 #if PIPELINE_SEL == 2
         BENCH("Sobel Filter",
+#if defined(__riscv)
+            SOBEL_RVV(blurred, gx, gy);
+#else
             (void)processing::sobel_3x3<uint8_t, int16_t>(blurred, gx, gy);
+#endif
         )
 #endif
 
@@ -136,13 +173,7 @@ int main()
             auto mag = make_copy(image);
             BENCH("Magnitude L1",
 #if defined(__riscv)
-    #if LMUL_SWEEP == 1
-                (void)processing::MagL1<1>(mag, gx, gy);
-    #elif LMUL_SWEEP == 2
-                (void)processing::MagL1<2>(mag, gx, gy);
-    #elif LMUL_SWEEP == 4
-                (void)processing::MagL1<4>(mag, gx, gy);
-    #endif
+                MAGL1_RVV(mag, gx, gy);
 #else
                 (void)processing::MagL1<2>(mag, gx, gy);
 #endif
@@ -177,14 +208,8 @@ int main()
             std::copy_n(image.buffer.get(), n, blurred.buffer.get());
 #if defined(__riscv)
             GAUSSIAN_RVV(blurred);
-            (void)processing::sobel_3x3<uint8_t, int16_t>(blurred, gx, gy);
-    #if LMUL_SWEEP == 1
-            (void)processing::MagL1<1>(mag, gx, gy);
-    #elif LMUL_SWEEP == 2
-            (void)processing::MagL1<2>(mag, gx, gy);
-    #elif LMUL_SWEEP == 4
-            (void)processing::MagL1<4>(mag, gx, gy);
-    #endif
+            SOBEL_RVV(blurred, gx, gy);
+            MAGL1_RVV(mag, gx, gy);
 #else
             (void)processing::gaussian_spatial_5x5<uint8_t, int32_t>(blurred);
             (void)processing::sobel_3x3<uint8_t, int16_t>(blurred, gx, gy);
