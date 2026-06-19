@@ -446,18 +446,18 @@ int main()
     std::cout << "=== Canny QEMU Equivalence Test (Phase 3.2) ===\n";
     std::cout << "Image: 100x75 (non-power-of-two — forces strip-mining tail)\n";
 
-    const uint32_t W = 100;
-    const uint32_t H = 75;
+    const uint32_t W = 1200;
+    const uint32_t H = 1600;
 
     // Load source image
     auto src = make_image<uint8_t>(W, H);
-    Status load_stat = image::io::load_raw<uint8_t>("rect.raw", src);
+    Status load_stat = image::io::load_raw<uint8_t>("Aquarium_1200x1600_gray.raw", src);
     if (load_stat != Status::E_OK)
     {
-        std::cerr << "ERROR: could not load rect.raw — place it in the working directory.\n";
+        std::cerr << "ERROR: could not load Aquarium_1200x1600_gray.raw — place it in the working directory.\n";
         return 1;
     }
-    std::cout << "Loaded rect.raw (" << W << "x" << H << ")\n";
+    std::cout << "Loaded Aquarium_1200x1600_gray.raw (" << W << "x" << H << ")\n";
 
     // Intermediate buffers shared across test functions
     auto blurred = make_image<uint8_t>(W, H);
