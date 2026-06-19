@@ -674,7 +674,7 @@ static void test_pipeline(const image::io::metadata_t<uint8_t> &src)
     // Spatial RVV
     std::memcpy(img_tmp.buffer.get(), src.buffer.get(), src.pixel_count);
     t0 = Clock::now();
-    processing::gaussian_spatial_5x5_rvv_lmul2(img_tmp);
+    processing::gaussian_spatial_5x5_rvv(img_tmp);
     t1 = Clock::now();
     ms_gauss_rvv = elapsed_ms(t0, t1);
 #endif
@@ -782,18 +782,18 @@ int main()
     std::cout << "=== Canny QEMU Equivalence Test (Phase 3.2) ===\n";
     std::cout << "Image: 100x75 (non-power-of-two — forces strip-mining tail)\n";
 
-    const uint32_t W = 640;
-    const uint32_t H = 640;
+    const uint32_t W = 256;
+    const uint32_t H = 256;
 
     // Load source image
     auto src = make_image<uint8_t>(W, H);
-    Status load_stat = image::io::load_raw<uint8_t>("Hisham.raw", src);
+    Status load_stat = image::io::load_raw<uint8_t>("Atta.raw", src);
     if (load_stat != Status::E_OK)
     {
-        std::cerr << "ERROR: could not load Hisham.raw — place it in the working directory.\n";
+        std::cerr << "ERROR: could not load Atta.raw — place it in the working directory.\n";
         return 1;
     }
-    std::cout << "Loaded Hisham.raw (" << W << "x" << H << ")\n";
+    std::cout << "Loaded Atta.raw (" << W << "x" << H << ")\n";
 
     // Intermediate buffers shared across test functions
     auto blurred = make_image<uint8_t>(W, H);

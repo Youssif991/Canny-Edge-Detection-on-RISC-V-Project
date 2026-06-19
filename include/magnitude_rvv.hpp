@@ -14,7 +14,7 @@ namespace processing
      * @param Gy     Vertical gradient buffer.
      * @return Execution status code.
      */
-    template <int LMUL = 2>
+    template <int LMUL = 4>
     Status MagL1(const image::io::metadata_t<uint8_t> &image,
                  const int16_t *__restrict Gx,
                  const int16_t *__restrict Gy);

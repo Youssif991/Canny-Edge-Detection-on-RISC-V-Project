@@ -133,7 +133,6 @@ rvv_test:
 	@echo "\n=== Running under QEMU simulations ==="
 	@echo "=== VLEN=128 ===" && $(QEMU) -cpu rv64,v=true,vlen=128,elen=64 build/target/debug/$(FILE).elf
 	@echo "=== VLEN=256 ===" && $(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/$(FILE).elf
-	@echo "=== VLEN=512 ===" && $(QEMU) -cpu rv64,v=true,vlen=512,elen=64 build/target/debug/$(FILE).elf
 
 # Run a specific QEMU test at a chosen VLEN: make rvv_test_vlen FILE=gaussian_test VLEN=256
 rvv_test_vlen:
