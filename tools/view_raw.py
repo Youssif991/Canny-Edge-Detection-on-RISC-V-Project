@@ -52,7 +52,7 @@ if __name__ == "__main__":
         image_path = os.path.join(assets_dir, filename)
 
     # Smart Auto-detection
-    default_w, default_h = 100, 75
+    default_w, default_h = 627, 634
     is_16bit = False
 
     if os.path.exists(image_path):
@@ -82,6 +82,14 @@ if __name__ == "__main__":
         elif file_size == 913686:         # 591x773 Output size (int16_t)
             default_w, default_h = 591, 773
             is_16bit = True
+        # --- ADDED NEW DYNAMIC DIMENSIONS FOR YOUR CURRENT CONFIG ---
+        elif file_size == 397518:         # 627x634 Input Image size (uint8)
+            default_w, default_h = 627, 634
+            is_16bit = False
+        elif file_size == 795036:         # 627x634 Sobel Output size (int16_t)
+            default_w, default_h = 627, 634
+            is_16bit = True
+        # -------------------------------------------------------------
         elif file_size == 1920000:        # 1200x1600 Image size (uint8)
             default_w, default_h = 1200, 1600
             is_16bit = False

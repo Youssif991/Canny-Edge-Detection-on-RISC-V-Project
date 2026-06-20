@@ -26,9 +26,9 @@
 #include <memory>
 
 // ── Configure input here ─────────────────────────────────────────────────────
-#define IMAGE_FILE   "Atta.raw"
-#define IMAGE_WIDTH  256
-#define IMAGE_HEIGHT 256
+#define IMAGE_FILE   "Ben10.raw"
+#define IMAGE_WIDTH  1920
+#define IMAGE_HEIGHT 1080
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Allocate a zeroed 64-byte aligned image buffer. */
