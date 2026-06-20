@@ -20,40 +20,6 @@ namespace processing
     namespace
     {
 
-        template <typename PixelT>
-        Status allocate_and_pad_image(
-            const image::io::metadata_t<PixelT> &input_image,
-            int32_t kernel_radius,
-            std::unique_ptr<PixelT[], utils::memory::deleter> &padded_image,
-            uint32_t &padded_width,
-            uint32_t &padded_height)
-        {
-            const int32_t image_width = static_cast<int32_t>(input_image.width);
-            const int32_t image_height = static_cast<int32_t>(input_image.height);
-
-            padded_width = image_width + 2 * kernel_radius;
-            padded_height = image_height + 2 * kernel_radius;
-            const uint32_t padded_size = padded_width * padded_height;
-
-            auto raw_ptr = static_cast<PixelT *>(
-                utils::memory::aligned_alloc(64, utils::memory::align_64(padded_size * sizeof(PixelT))));
-            if (!raw_ptr)
-                return Status::E_ALLOC_FAIL;
-
-            padded_image.reset(raw_ptr);
-            std::fill(padded_image.get(), padded_image.get() + padded_size, PixelT{0});
-
-            for (int32_t r = 0; r < image_height; ++r)
-            {
-                std::copy_n(
-                    &input_image.buffer.get()[r * image_width],
-                    image_width,
-                    &padded_image.get()[(r + kernel_radius) * padded_width + kernel_radius]);
-            }
-
-            return Status::E_OK;
-        }
-
         struct rvv_traits
         {
             using u8 = vuint8m2_t;
@@ -93,15 +59,29 @@ namespace processing
         const int32_t image_width = static_cast<int32_t>(input_image.width);
         const int32_t image_height = static_cast<int32_t>(input_image.height);
         const int32_t kernel_radius = 2;
-        const uint32_t pw = image_width + 2 * kernel_radius;
 
-        uint32_t padded_width = 0, padded_height = 0;
-        std::unique_ptr<uint8_t[], utils::memory::deleter> padded_image;
+        // ── Padding, inlined directly (matches gaussian.cpp's style) ──
+        const uint32_t padded_image_width = image_width + 2 * kernel_radius;
+        const uint32_t padded_image_height = image_height + 2 * kernel_radius;
+        const uint32_t padded_image_size = padded_image_width * padded_image_height;
 
-        Status status = allocate_and_pad_image(input_image, kernel_radius,
-                                               padded_image, padded_width, padded_height);
-        if (status != Status::E_OK)
-            return status;
+        auto padded_image_raw = static_cast<uint8_t *>(
+            utils::memory::aligned_alloc(64,
+                                         utils::memory::align_64(padded_image_size * sizeof(uint8_t))));
+        if (!padded_image_raw)
+        {
+            return Status::E_ALLOC_FAIL;
+        }
+        std::unique_ptr<uint8_t[], utils::memory::deleter> padded_image(padded_image_raw);
+        std::fill(padded_image.get(), padded_image.get() + padded_image_size, uint8_t{0});
+
+        for (int32_t row_index = 0; row_index < image_height; ++row_index)
+        {
+            std::copy_n(
+                &input_image.buffer.get()[row_index * image_width],
+                image_width,
+                &padded_image.get()[(row_index + kernel_radius) * padded_image_width + kernel_radius]);
+        }
 
         auto output_raw = static_cast<uint8_t *>(
             utils::memory::aligned_alloc(64, input_image.aligned_buffer_size));
@@ -123,7 +103,7 @@ namespace processing
 
                 for (int32_t ky = -kernel_radius; ky <= kernel_radius; ++ky)
                 {
-                    const uint32_t row_off = (y + kernel_radius + ky) * pw;
+                    const uint32_t row_off = (y + kernel_radius + ky) * padded_image_width;
                     for (int32_t kx = -kernel_radius; kx <= kernel_radius; ++kx)
                     {
                         uint8_t weight = static_cast<uint8_t>(
