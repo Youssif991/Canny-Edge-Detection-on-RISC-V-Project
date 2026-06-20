@@ -44,13 +44,21 @@ static double elapsed_ms(Clock::time_point s, Clock::time_point e)
     return std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(e - s).count();
 }
 
-/* ── Benchmark macro ─────────────────────────────────────────── */
-#define BENCH(label, code)                                        \
-    {                                                             \
-        auto t0 = Clock::now();                                   \
-        { code; }                                                 \
-        auto t1 = Clock::now();                                   \
-        printf("%-24s %.3f ms\n", label, elapsed_ms(t0, t1));    \
+/* ── Benchmark config ────────────────────────────────────────── */
+static constexpr int BENCH_ITERS = 100;
+
+/* ── Benchmark macro (averages over BENCH_ITERS iterations) ──── */
+#define BENCH(label, code)                                              \
+    {                                                                   \
+        double _total_ms = 0.0;                                         \
+        for (int _i = 0; _i < BENCH_ITERS; ++_i) {                     \
+            auto t0 = Clock::now();                                     \
+            { code; }                                                   \
+            auto t1 = Clock::now();                                     \
+            _total_ms += elapsed_ms(t0, t1);                           \
+        }                                                               \
+        printf("%-24s %.3f ms  (avg over %d iters)\n",                 \
+               label, _total_ms / BENCH_ITERS, BENCH_ITERS);           \
     }
 
 /* ── Allocate a fresh metadata copy of an image ─────────────── */

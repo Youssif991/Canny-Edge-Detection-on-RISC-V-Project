@@ -67,10 +67,10 @@ run_bench: bench_sweep
 	@echo "\n========================================================"
 	@echo "=== Step 3: Binary Sizes                             ==="
 	@echo "========================================================"
-	riscv64-unknown-elf-size build/target/release/bench_O0.elf
-	riscv64-unknown-elf-size build/target/release/bench_O2.elf
-	riscv64-unknown-elf-size build/target/release/bench_O3.elf
-	riscv64-unknown-elf-size build/target/release/bench_O3vec.elf
+	riscv64-linux-gnu-size build/target/release/bench_O0.elf
+	riscv64-linux-gnu-size build/target/release/bench_O2.elf
+	riscv64-linux-gnu-size build/target/release/bench_O3.elf
+	riscv64-linux-gnu-size build/target/release/bench_O3vec.elf
 	@echo "\n========================================================"
 	@echo "=== Step 6: QEMU Execution                           ==="
 	@echo "========================================================"
@@ -126,13 +126,18 @@ rvv_test:
 	@if [ ! -f "tests/$(FILE).cpp" ]; then \
 		echo "Error: tests/$(FILE).cpp not found!"; exit 1; \
 	fi
-	
+
 	@echo "Compiling tests/$(FILE).cpp with library dependencies..."
-	$(RV_CXX) $(RV_FLAGS) tests/$(FILE).cpp $(LIB_SRCS) -o build/target/debug/$(FILE).elf
-	
-	@echo "\n=== Running under QEMU simulations ==="
-	@echo "=== VLEN=128 ===" && $(QEMU) -cpu rv64,v=true,vlen=128,elen=64 build/target/debug/$(FILE).elf
-	@echo "=== VLEN=256 ===" && $(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/$(FILE).elf
+	$(RV_CXX) $(RV_FLAGS) tests/$(FILE).cpp $(LIB_SRCS) -o build/target/debug/$(FILE)_128.elf
+	$(RV_CXX) $(RV_FLAGS) tests/$(FILE).cpp $(LIB_SRCS) -o build/target/debug/$(FILE)_256.elf
+	@echo ""
+	@echo "=== Running under QEMU simulations ==="
+	@SIZE=$$(du -k build/target/debug/$(FILE)_128.elf | cut -f1); \
+	echo "=== VLEN=128  [binary: $${SIZE} KB] ===" && \
+	$(QEMU) -cpu rv64,v=true,vlen=128,elen=64 build/target/debug/$(FILE)_128.elf
+	@SIZE=$$(du -k build/target/debug/$(FILE)_256.elf | cut -f1); \
+	echo "=== VLEN=256  [binary: $${SIZE} KB] ===" && \
+	$(QEMU) -cpu rv64,v=true,vlen=256,elen=64 build/target/debug/$(FILE)_256.elf
 
 # Run a specific QEMU test at a chosen VLEN: make rvv_test_vlen FILE=gaussian_test VLEN=256
 rvv_test_vlen:

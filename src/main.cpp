@@ -18,6 +18,9 @@
 #include "magnitude.hpp"
 #include "magnitude_rvv.hpp"
 #include "direction.hpp"
+#include "nms.hpp"
+#include "double_threshold.hpp"
+#include "hysteresis.hpp"
 #include "utils.hpp"
 
 #include <cstdio>
@@ -26,9 +29,9 @@
 #include <memory>
 
 // ── Configure input here ─────────────────────────────────────────────────────
-#define IMAGE_FILE   "Atta.raw"
-#define IMAGE_WIDTH  256
-#define IMAGE_HEIGHT 256
+#define IMAGE_FILE   "Ben10.raw"
+#define IMAGE_WIDTH  1920
+#define IMAGE_HEIGHT 1080
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Allocate a zeroed 64-byte aligned image buffer. */
@@ -123,6 +126,26 @@ int main()
 
     check(image::io::save_raw<uint8_t>("out_direction.raw", dir), "save direction");
 
+    // ── 6. Non-Maximum Suppression ───────────────────────────────────────
+    auto nms_image = make_image<uint8_t>(W, H);
+    check(processing::NonMaxSuppression<uint8_t>(mag, dir, nms_image), "nms");
+    std::printf("[6] Non-Max Suppress   (scalar)\n");
+
+    check(image::io::save_raw<uint8_t>("out_nms.raw", nms_image), "save nms");
+
+    // ── 7. Double Threshold ──────────────────────────────────────────────
+    // Using Auto-Otsu thresholding with a 0.4f multiplier as defined in bonus_test.cpp
+    check(processing::DoubleThresholdAuto<uint8_t>(nms_image, 0.4f), "double_threshold");
+    std::printf("[7] Double Threshold   (scalar)\n");
+
+    check(image::io::save_raw<uint8_t>("out_double_threshold.raw", nms_image), "save double threshold");
+
+    // ── 8. Hysteresis ────────────────────────────────────────────────────
+    check(processing::Hysteresis<uint8_t>(nms_image), "hysteresis");
+    std::printf("[8] Hysteresis Tracking(scalar)\n");
+
+    check(image::io::save_raw<uint8_t>("out_hysteresis.raw", nms_image), "save hysteresis");
+
     // ── Done ─────────────────────────────────────────────────────────────────
     std::printf("\nDone. Outputs written to ./assets/\n");
     std::printf("  out_gaussian.raw\n");
@@ -130,6 +153,9 @@ int main()
     std::printf("  out_sobel_gy.raw\n");
     std::printf("  out_magnitude.raw\n");
     std::printf("  out_direction.raw\n");
+    std::printf("  out_nms.raw\n");
+    std::printf("  out_double_threshold.raw\n");
+    std::printf("  out_hysteresis.raw\n");
 
     return 0;
 }

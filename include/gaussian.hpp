@@ -37,12 +37,4 @@ namespace processing
 template <typename PixelT = uint8_t, typename AccumT = int32_t>
 Status gaussian_spatial_5x5(image::io::metadata_t<PixelT>& input_image);
 
-/**
- * @brief   Applies a 5x5 Gaussian blur to the input image using separable convolution.
- * @param   image The input image metadata, which will be modified in-place with the blurred output.
- * @return  Status indicating success or failure of the operation.
- */
-template <typename PixelT = uint8_t, typename AccumT = int32_t>
-Status gaussian_separable_5x5(image::io::metadata_t<PixelT>& input_image);
-
 } // namespace processing
