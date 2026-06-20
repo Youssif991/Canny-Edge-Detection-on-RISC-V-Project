@@ -234,7 +234,7 @@ static void test_gaussian_rvv(const image::io::metadata_t<uint8_t> &src)
             image::io::save_raw<uint8_t>(save_file, img);
     };
 
-    run("gaussian_rvv lmul2 == scalar", processing::gaussian_spatial_5x5_rvv_lmul2, "out_gaussian_rvv.raw");
+    run("gaussian_rvv lmul2 == scalar", processing::gaussian_spatial_5x5_rvv, "out_gaussian_rvv.raw");
 
     // Uniform image: RVV must also preserve 128 ± 1 in the interior
     auto img_u = make_image<uint8_t>(w, h);
