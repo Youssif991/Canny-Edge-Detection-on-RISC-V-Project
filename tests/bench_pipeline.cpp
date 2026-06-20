@@ -15,25 +15,9 @@
 #include <algorithm>
 #include <chrono>
 
-/* ── CHANGE THESE TO CONFIGURE THE RUN ──────────────────────────
- *
- *  LMUL_SWEEP   : RVV LMUL factor  (1 | 2 | 4)
- *                 NOTE: Gaussian only supports LMUL 1 and 2.
- *                       Sobel and Magnitude support LMUL 1, 2, and 4.
- *
- *  PIPELINE_SEL : which stage to benchmark
- *      0 → Gaussian spatial only
- *      2 → Sobel only            (uses pre-blurred input)
- *      3 → Magnitude L1 only     (uses pre-computed gx/gy)
- *      6 → Full pipeline         (all stages timed together)
- *
- *  Scalar vs RVV is controlled by the Makefile -march flag:
- *      bench-scalar-O3  →  -march=rv64gc   (__riscv undefined)
- *      bench-rvv-O3     →  -march=rv64gcv  (__riscv defined)
- *
- * ────────────────────────────────────────────────────────────── */
+/* ── CHANGE THESE TO CONFIGURE THE RUN ────────────────────────── */
 #define LMUL_SWEEP   4
-#define PIPELINE_SEL 2
+#define PIPELINE_SEL 6
 
 /* ── Timing helper ───────────────────────────────────────────── */
 using Clock = std::chrono::high_resolution_clock;
@@ -44,10 +28,11 @@ static double elapsed_ms(Clock::time_point s, Clock::time_point e)
 }
 
 /* ── Benchmark macro ─────────────────────────────────────────── */
-#define BENCH(label, code)                                        \
+// Wrapped 'code' in a lambda/block context execution to safely handle macro expansions inside it
+#define BENCH(label, ...)                                         \
     {                                                             \
         auto t0 = Clock::now();                                   \
-        { code; }                                                 \
+        { __VA_ARGS__; }                                          \
         auto t1 = Clock::now();                                   \
         printf("%-24s %.3f ms\n", label, elapsed_ms(t0, t1));    \
     }
@@ -58,9 +43,9 @@ static double elapsed_ms(Clock::time_point s, Clock::time_point e)
         _Pragma("GCC diagnostic push")                                \
         _Pragma("GCC diagnostic ignored \"-Wunreachable-code\"")      \
         if constexpr (LMUL_SWEEP == 1)                                \
-            (void)processing::gaussian_spatial_5x5_rvv_lmul1(img);   \
+            (void)processing::gaussian_spatial_5x5_rvv_lmul1(img);    \
         else                                                          \
-            (void)processing::gaussian_spatial_5x5_rvv_lmul2(img);   \
+            (void)processing::gaussian_spatial_5x5_rvv_lmul2(img);    \
         _Pragma("GCC diagnostic pop")                                 \
     } while(0)
 
@@ -70,11 +55,11 @@ static double elapsed_ms(Clock::time_point s, Clock::time_point e)
         _Pragma("GCC diagnostic push")                                \
         _Pragma("GCC diagnostic ignored \"-Wunreachable-code\"")      \
         if constexpr (LMUL_SWEEP == 1)                                \
-            (void)processing::sobel_3x3_rvv<1>(img, gx, gy);         \
+            (void)processing::sobel_3x3_rvv<1>(img, gx, gy);          \
         else if constexpr (LMUL_SWEEP == 2)                           \
-            (void)processing::sobel_3x3_rvv<2>(img, gx, gy);         \
+            (void)processing::sobel_3x3_rvv<2>(img, gx, gy);          \
         else                                                          \
-            (void)processing::sobel_3x3_rvv<4>(img, gx, gy);         \
+            (void)processing::sobel_3x3_rvv<4>(img, gx, gy);          \
         _Pragma("GCC diagnostic pop")                                 \
     } while(0)
 
@@ -107,8 +92,8 @@ static image::io::metadata_t<uint8_t> make_copy(const image::io::metadata_t<uint
 
 int main()
 {
-    constexpr uint32_t WIDTH  = 512;
-    constexpr uint32_t HEIGHT = 512;
+    constexpr uint32_t WIDTH  = 100;
+    constexpr uint32_t HEIGHT = 75;
     const size_t n = WIDTH * HEIGHT;
 
     image::io::metadata_t<uint8_t> image;
@@ -157,14 +142,16 @@ int main()
 #endif
 
         /* ── Stage 2: Sobel only ─────────────────────────────── */
-#if PIPELINE_SEL == 2
-        BENCH("Sobel Filter",
+#if (PIPELINE_SEL == 2) 
+        {
+            BENCH("Sobel Filter",
 #if defined(__riscv)
-            SOBEL_RVV(blurred, gx, gy);
+                SOBEL_RVV(blurred, gx, gy)
 #else
-            (void)processing::sobel_3x3<uint8_t, int16_t>(blurred, gx, gy);
+                (void)processing::sobel_3x3<uint8_t, int16_t>(blurred, gx, gy)
 #endif
-        )
+            ); // Added semi-colon outside macro boundary safely
+        }
 #endif
 
         /* ── Stage 3: Magnitude L1 only ──────────────────────── */
@@ -173,11 +160,11 @@ int main()
             auto mag = make_copy(image);
             BENCH("Magnitude L1",
 #if defined(__riscv)
-                MAGL1_RVV(mag, gx, gy);
+                MAGL1_RVV(mag, gx, gy)
 #else
-                (void)processing::MagL1<2>(mag, gx, gy);
+                (void)processing::MagL1<2>(mag, gx, gy)
 #endif
-            )
+            );
         }
 #endif
     }
@@ -190,11 +177,11 @@ int main()
         BENCH("Gaussian spatial",
             std::copy_n(image.buffer.get(), n, img_copy.buffer.get());
 #if defined(__riscv)
-            GAUSSIAN_RVV(img_copy);
+            GAUSSIAN_RVV(img_copy)
 #else
-            (void)processing::gaussian_spatial_5x5<uint8_t, int32_t>(img_copy);
+            (void)processing::gaussian_spatial_5x5<uint8_t, int32_t>(img_copy)
 #endif
-        )
+        );
     }
 #endif
 
@@ -209,13 +196,13 @@ int main()
 #if defined(__riscv)
             GAUSSIAN_RVV(blurred);
             SOBEL_RVV(blurred, gx, gy);
-            MAGL1_RVV(mag, gx, gy);
+            MAGL1_RVV(mag, gx, gy)
 #else
             (void)processing::gaussian_spatial_5x5<uint8_t, int32_t>(blurred);
             (void)processing::sobel_3x3<uint8_t, int16_t>(blurred, gx, gy);
-            (void)processing::MagL1<2>(mag, gx, gy);
+            (void)processing::MagL1<2>(mag, gx, gy)
 #endif
-        )
+        );
     }
 #endif
 

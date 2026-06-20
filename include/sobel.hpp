@@ -21,9 +21,4 @@ template <typename PixelT = uint8_t, typename OutputT = int16_t>
                                 OutputT* __restrict buffer_x,
                                 OutputT* __restrict buffer_y);
 
-template <typename PixelT = uint8_t, typename OutputT = int16_t>
- Status sobel_3x3_unbounded(const image::io::metadata_t<PixelT>& image,
-                                OutputT* __restrict buffer_x,
-                                OutputT* __restrict buffer_y);
-
 } // namespace processing
