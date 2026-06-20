@@ -89,6 +89,13 @@ if __name__ == "__main__":
         elif file_size == 795036:         # 627x634 Sobel Output size (int16_t)
             default_w, default_h = 627, 634
             is_16bit = True
+        # --- ADDED 256x256 FALLBACK PROCESSING DETECTIONS ---
+        elif file_size == 65536:          # 256x256 Magnitude size (uint8)
+            default_w, default_h = 256, 256
+            is_16bit = False
+        elif file_size == 131072:         # 256x256 Magnitude size (int16_t if applicable)
+            default_w, default_h = 256, 256
+            is_16bit = True
         # -------------------------------------------------------------
         elif file_size == 1920000:        # 1200x1600 Image size (uint8)
             default_w, default_h = 1200, 1600
